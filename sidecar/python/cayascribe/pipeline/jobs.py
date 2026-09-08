@@ -72,8 +72,13 @@ class JobRunner:
             diar_name = "none"
             if do_diar:
                 self._emit(job_id, "progress", {"stage": "diarize", "pct": 20})
-                turns = diarize(wav, speaker_count)
-                diar_name = "sherpa-onnx" if turns else "skipped"
+                try:
+                    turns = diarize(wav, speaker_count)
+                    diar_name = "sherpa-onnx" if turns else "skipped"
+                except Exception:
+                    # ASR still useful if sherpa-onnx result shape changes again
+                    turns = []
+                    diar_name = "skipped"
 
             self._emit(job_id, "progress", {"stage": "asr", "pct": 35})
             segments: list[dict[str, Any]] = []

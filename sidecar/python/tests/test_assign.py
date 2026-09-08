@@ -1,4 +1,42 @@
-from cayascribe.diar.cluster import assign_speakers, speaker_letter
+from cayascribe.diar.cluster import assign_speakers, iter_diar_segments, speaker_letter
+
+
+class _FakeResult:
+    def __init__(self, segs):
+        self._segs = segs
+
+    def sort_by_start_time(self):
+        return self._segs
+
+
+def test_iter_diar_sort_by_start_time():
+    class Seg:
+        def __init__(self, start, end, speaker):
+            self.start = start
+            self.end = end
+            self.speaker = speaker
+
+    segs = [Seg(0.0, 1.0, 0), Seg(1.2, 2.0, 1)]
+    out = iter_diar_segments(_FakeResult(segs))
+    assert len(out) == 2
+    assert out[0].speaker == 0
+
+
+def test_iter_diar_non_iterable_without_sorter():
+    class Blob:
+        pass
+
+    assert iter_diar_segments(Blob()) == []
+
+
+def test_iter_diar_already_list():
+    segs = [object(), object()]
+    assert iter_diar_segments(segs) is not segs
+    assert iter_diar_segments(segs) == segs
+
+
+def test_iter_diar_none():
+    assert iter_diar_segments(None) == []
 
 
 def test_letters():

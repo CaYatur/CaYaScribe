@@ -13,6 +13,32 @@ def speaker_letter(i: int) -> str:
     return f"S{i + 1}"
 
 
+def iter_diar_segments(result: Any) -> list[Any]:
+    """sherpa-onnx 1.13 returns OfflineSpeakerDiarizationResult, not a list.
+
+    Official API: `sd.process(audio).sort_by_start_time()` is iterable.
+    """
+    if result is None:
+        return []
+    sorted_result = result
+    sorter = getattr(result, "sort_by_start_time", None)
+    if callable(sorter):
+        try:
+            sorted_result = sorter()
+        except Exception:
+            sorted_result = result
+    if isinstance(sorted_result, (list, tuple)):
+        return list(sorted_result)
+    for attr in ("segments",):
+        inner = getattr(sorted_result, attr, None)
+        if inner is not None and inner is not sorted_result:
+            return iter_diar_segments(inner)
+    try:
+        return list(sorted_result)
+    except TypeError:
+        return []
+
+
 def diarize(wav: Path, speaker_count: int | None) -> list[dict[str, Any]]:
     """Return turns [{startMs,endMs,speakerId}] or empty if models missing."""
     try:
@@ -61,18 +87,25 @@ def diarize(wav: Path, speaker_count: int | None) -> list[dict[str, Any]]:
     if not config.validate():
         return []
     sd = sherpa_onnx.OfflineSpeakerDiarization(config)
-    result = sd.process(np.ascontiguousarray(samples, dtype=np.float32))
+    audio = np.ascontiguousarray(samples, dtype=np.float32)
+    expected = int(getattr(sd, "sample_rate", 16000) or 16000)
+    if sr != expected and sr > 0:
+        duration = audio.shape[0] / float(sr)
+        n = max(1, round(duration * expected))
+        t_old = np.linspace(0.0, duration, audio.shape[0], endpoint=False)
+        t_new = np.linspace(0.0, duration, n, endpoint=False)
+        audio = np.interp(t_new, t_old, audio).astype(np.float32)
+    result = sd.process(audio)
     turns = []
-    # first-appearance labeling A, B, C
     order: dict[int, str] = {}
-    for item in result:
-        sid = int(item.speaker)
+    for item in iter_diar_segments(result):
+        sid = int(getattr(item, "speaker", 0))
         if sid not in order:
             order[sid] = speaker_letter(len(order))
         turns.append(
             {
-                "startMs": int(item.start * 1000),
-                "endMs": int(item.end * 1000),
+                "startMs": int(float(getattr(item, "start", 0.0)) * 1000),
+                "endMs": int(float(getattr(item, "end", 0.0)) * 1000),
                 "speakerId": order[sid],
             }
         )
