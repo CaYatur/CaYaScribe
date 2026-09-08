@@ -39,6 +39,10 @@ export function assetLabel(locale: Locale, id: string, fallback: string): string
   return messages(locale).assets[id] ?? fallback;
 }
 
+export function assetHint(locale: Locale, id: string): string {
+  return messages(locale).assetHints[id] ?? "";
+}
+
 export function stageLabel(locale: Locale, stage: string): string {
   const t = messages(locale);
   switch (stage) {

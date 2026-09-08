@@ -6,6 +6,7 @@ import { streamEvents } from "./lib/sse";
 import { exportJson, exportSrt, exportTxt, exportVtt, type Segment, type Speaker } from "./lib/export";
 import { formatBytes, formatClock } from "./lib/format";
 import {
+  assetHint,
   assetLabel,
   detectLocale,
   messages,
@@ -324,6 +325,7 @@ export default function App() {
               ))}
             </select>
           </label>
+          <p className="hint">{t.qualityHint}</p>
           <label className="field">
             {t.enhance}
             <select value={enhance} onChange={(e) => setEnhance(e.target.value as JobBody["enhance"])}>
@@ -525,7 +527,11 @@ export default function App() {
                     />
                     <span>
                       {a.recommended && <em className="badge">{t.recommended}</em>}
+                      {a.id === "whisper-large-v3-ct2" && <em className="badge hard">{t.hardAudio}</em>}
                       {assetLabel(locale, a.id, a.displayName)}
+                      {assetHint(locale, a.id) && (
+                        <small className="model-hint">{assetHint(locale, a.id)}</small>
+                      )}
                       <small className="src">
                         {t.source}: {a.source} · {a.present ? t.downloaded : formatBytes(a.sizeBytes)}
                       </small>

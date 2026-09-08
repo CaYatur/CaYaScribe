@@ -67,10 +67,10 @@
     {
       "id": "whisper-large-v3-ct2",
       "kind": "asr",
-      "displayName": "Whisper large-v3 (Maximum)",
+      "displayName": "Whisper large-v3 (Maximum, hard audio)",
       "qualityTiers": ["max"],
       "required": false,
-      "recommended": false,
+      "recommended": true,
       "license": "MIT",
       "gated": false,
       "sizeBytes": 3100000000,
