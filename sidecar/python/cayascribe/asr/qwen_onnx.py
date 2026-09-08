@@ -7,7 +7,7 @@ from typing import Any
 
 from cayascribe.asr.router import QWEN_LANG_NAMES, resolve_asr_language
 
-CHUNK_MS = 20_000
+CHUNK_MS = 30_000
 
 
 def _files(model_dir: Path) -> tuple[str, str, str, str]:
@@ -24,30 +24,37 @@ def _language_option(language: str) -> str:
     code = resolve_asr_language(language)
     if not code:
         return ""
+    if code == "tl":
+        code = "fil"
     return QWEN_LANG_NAMES.get(code, "")
 
 
-def _chunks(
-    n: int,
-    sr: int,
-    turns: list[dict[str, Any]] | None,
-) -> list[tuple[int, int]]:
-    if turns:
-        out: list[tuple[int, int]] = []
-        win = int(CHUNK_MS * sr / 1000)
-        for t in turns:
-            a = max(0, int(int(t["startMs"]) * sr / 1000))
-            b = min(n, int(int(t["endMs"]) * sr / 1000))
-            i = a
-            while i < b:
-                j = min(b, i + win)
-                if j - i >= int(0.25 * sr):
-                    out.append((i, j))
-                i = j
-        if out:
-            return out
+def cjk_ratio(text: str) -> float:
+    if not text:
+        return 0.0
+    n = 0
+    for ch in text:
+        o = ord(ch)
+        if 0x4E00 <= o <= 0x9FFF or 0x3040 <= o <= 0x30FF or 0xAC00 <= o <= 0xD7AF:
+            n += 1
+    return n / max(len(text), 1)
+
+
+def _clean_text(raw: str) -> str:
+    t = (raw or "").strip()
+    if "<asr_text>" in t:
+        t = t.split("<asr_text>", 1)[-1]
+    if t.lower().startswith("language "):
+        t = t.split("\n", 1)[-1]
+        if "<asr_text>" in t:
+            t = t.split("<asr_text>", 1)[-1]
+    return t.strip()
+
+
+def _chunks(n: int, sr: int) -> list[tuple[int, int]]:
+    # Do not slice by diarization turns — that re-runs Qwen dozens of times.
     win = int(CHUNK_MS * sr / 1000)
-    out = []
+    out: list[tuple[int, int]] = []
     i = 0
     while i < n:
         out.append((i, min(n, i + win)))
@@ -62,12 +69,13 @@ def transcribe_qwen(
     engine_name: str,
     turns: list[dict[str, Any]] | None = None,
 ) -> Iterator[dict[str, Any]]:
+    _ = turns
     import numpy as np
     import sherpa_onnx
     import soundfile as sf
 
     conv, enc, dec, tok = _files(model_dir)
-    threads = max(1, min(4, os.cpu_count() or 2))
+    threads = max(2, min(8, os.cpu_count() or 2))
     rec = sherpa_onnx.OfflineRecognizer.from_qwen3_asr(
         conv_frontend=conv,
         encoder=enc,
@@ -87,15 +95,21 @@ def transcribe_qwen(
     lang_opt = _language_option(language)
     yield {
         "type": "meta",
-        "language": lang_opt or language or "auto",
+        "language": resolve_asr_language(language) or language or "auto",
         "engine": f"{engine_name}:{model_dir.name}",
         "device": "cpu",
         "compute": "int8",
     }
+    windows = _chunks(audio.shape[0], int(sr))
     idx = 0
-    for start, end in _chunks(audio.shape[0], sr, turns):
+    for wi, (start, end) in enumerate(windows):
+        yield {
+            "type": "progress",
+            "stage": "asr",
+            "pct": 35 + int(50 * wi / max(len(windows), 1)),
+        }
         piece = audio[start:end]
-        if piece.size < sr * 0.25:
+        if piece.size < sr * 0.35:
             continue
         if float(np.max(np.abs(piece))) < 0.008:
             continue
@@ -107,7 +121,7 @@ def transcribe_qwen(
                 pass
         stream.accept_waveform(int(sr), piece)
         rec.decode_stream(stream)
-        text = (getattr(stream.result, "text", "") or "").strip()
+        text = _clean_text(getattr(stream.result, "text", "") or "")
         if not text:
             continue
         yield {

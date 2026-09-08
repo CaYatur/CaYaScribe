@@ -92,6 +92,13 @@ class JobRunner:
                     language = item["language"]
                     self._emit(job_id, "meta", item)
                     continue
+                if item["type"] == "progress":
+                    self._emit(
+                        job_id,
+                        "progress",
+                        {"stage": str(item.get("stage") or "asr"), "pct": int(item.get("pct") or 35)},
+                    )
+                    continue
                 segments.append(
                     {
                         "id": item["id"],

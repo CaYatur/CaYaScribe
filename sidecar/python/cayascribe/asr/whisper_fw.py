@@ -79,6 +79,44 @@ def open_whisper_model(model_dir: Path | str) -> tuple[Any, str, str]:
         return model, "cpu", "int8"
 
 
+def detect_language(wav: Path) -> str | None:
+    """Whisper LID on the first ~30s. Qwen-ONNX auto-LID is unreliable for Turkish."""
+    model_dir = None
+    for quality in ("fast", "balanced", "max"):
+        _name, found = whisper_dir_for_quality(quality)
+        if found is not None:
+            model_dir = found
+            break
+    if model_dir is None:
+        return None
+    import numpy as np
+    import soundfile as sf
+
+    samples, sr = sf.read(str(wav), dtype="float32")
+    if samples.ndim > 1:
+        samples = samples.mean(axis=1)
+    take = min(samples.shape[0], int(sr * 30))
+    if take < sr:
+        return None
+    clip = np.ascontiguousarray(samples[:take], dtype=np.float32)
+    model, _device, _compute = open_whisper_model(model_dir)
+    _segments, info = model.transcribe(
+        clip,
+        language=None,
+        vad_filter=True,
+        word_timestamps=False,
+        beam_size=1,
+        condition_on_previous_text=False,
+    )
+    lang = getattr(info, "language", None)
+    conf = float(getattr(info, "language_probability", 1.0) or 0.0)
+    if not lang:
+        return None
+    if conf < 0.4:
+        return None
+    return str(lang)
+
+
 def transcribe(
     wav: Path,
     quality: str,

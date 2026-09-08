@@ -116,10 +116,10 @@ def select_engine(
     if forced:
         return forced
 
-    # sherpa-onnx Qwen3 INT8 runs on CPU — CUDA extra is not required.
-    if quality in ("high", "max") and qwen_language_ok(lang):
-        if quality == "max" and qwen_17:
-            return "qwen-1.7b"
+    lang_auto = (language or "auto").strip().lower() in ("auto", "", "detect")
+    # Qwen-ONNX auto-LID often emits CJK garbage. Whisper handles auto better.
+    # 1.7B INT8 on CPU is many times slower than realtime — prefer 0.6B.
+    if (not lang_auto) and quality in ("high", "max") and qwen_language_ok(lang):
         if qwen_06:
             return "qwen-0.6b"
         if qwen_17:

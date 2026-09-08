@@ -44,7 +44,7 @@ def test_high_tr_prefers_qwen_onnx_without_cuda():
     )
 
 
-def test_max_tr_prefers_qwen_17():
+def test_max_tr_uses_qwen_06_on_cpu():
     assert (
         select_engine(
             language="tr",
@@ -53,12 +53,31 @@ def test_max_tr_prefers_qwen_17():
             qwen_17=True,
             cu12x=False,
         )
-        == "qwen-1.7b"
+        == "qwen-0.6b"
+    )
+
+
+def test_auto_does_not_select_qwen():
+    assert (
+        select_engine(
+            language="auto",
+            quality="high",
+            qwen_06=True,
+            qwen_17=True,
+        )
+        == "whisper-turbo"
     )
 
 
 def test_forced_qwen_uses_onnx_without_cuda():
     assert select_engine(language="tr", quality="high", forced="qwen", qwen_06=True, cu12x=False) == "qwen-0.6b"
+
+
+def test_cjk_ratio_detects_chinese():
+    from cayascribe.asr.qwen_onnx import cjk_ratio
+
+    assert cjk_ratio("merhaba nasılsın") < 0.05
+    assert cjk_ratio("你好世界 hello") > 0.3
 
 
 def test_high_quality_ids_prefer_qwen():
