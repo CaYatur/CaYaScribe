@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import threading
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from cayascribe.assets.manifest import by_id
 from cayascribe.paths import assets_dir
+from cayascribe.perf import cpu_thread_count
+
+_DIAR_CACHE: dict[tuple[str, str, int, int], Any] = {}
 
 # Best-available embedding first. TitaNet-small is a fallback only.
 EMBED_IDS = [
@@ -75,22 +80,35 @@ def segmentation_path() -> Path | None:
     return _onnx_file(seg_dir)
 
 
-def embedding_path() -> Path | None:
-    for asset_id in EMBED_IDS:
+def embedding_path(embed_id: str | None = None) -> Path | None:
+    ids = [embed_id] if embed_id else list(EMBED_IDS)
+    for asset_id in ids:
+        if not asset_id:
+            continue
         try:
             rec = by_id(asset_id)
         except KeyError:
             continue
         found = _onnx_file(rec.local_path())
+        if found is None:
+            found = _onnx_file(rec.install_root())
         if found is not None:
             return found
     return None
 
 
-def diarize(wav: Path, speaker_count: int | None) -> list[dict[str, Any]]:
+def diarize(
+    wav: Path,
+    speaker_count: int | None,
+    cancel: threading.Event | None = None,
+    embed_id: str | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
+) -> list[dict[str, Any]]:
     """Return turns [{startMs,endMs,speakerId}] or empty if models missing."""
+    if cancel is not None and cancel.is_set():
+        raise RuntimeError("cancelled")
     seg = segmentation_path()
-    emb = embedding_path()
+    emb = embedding_path(embed_id)
     if seg is None or emb is None:
         return []
 
@@ -105,21 +123,32 @@ def diarize(wav: Path, speaker_count: int | None) -> list[dict[str, Any]]:
         raise RuntimeError("diar_expects_16k")
 
     num_clusters = int(speaker_count) if speaker_count and speaker_count >= 2 else -1
-    config = sherpa_onnx.OfflineSpeakerDiarizationConfig(
-        segmentation=sherpa_onnx.OfflineSpeakerSegmentationModelConfig(
-            pyannote=sherpa_onnx.OfflineSpeakerSegmentationPyannoteModelConfig(model=str(seg)),
-        ),
-        embedding=sherpa_onnx.SpeakerEmbeddingExtractorConfig(model=str(emb)),
-        clustering=sherpa_onnx.FastClusteringConfig(
-            num_clusters=num_clusters,
-            threshold=0.5,
-        ),
-        min_duration_on=0.3,
-        min_duration_off=0.5,
-    )
-    if not config.validate():
-        return []
-    sd = sherpa_onnx.OfflineSpeakerDiarization(config)
+    threads = cpu_thread_count()
+    cache_key = (str(seg), str(emb), num_clusters, threads)
+    sd = _DIAR_CACHE.get(cache_key)
+    if sd is None:
+        config = sherpa_onnx.OfflineSpeakerDiarizationConfig(
+            segmentation=sherpa_onnx.OfflineSpeakerSegmentationModelConfig(
+                pyannote=sherpa_onnx.OfflineSpeakerSegmentationPyannoteModelConfig(model=str(seg)),
+                num_threads=threads,
+                provider="cpu",
+            ),
+            embedding=sherpa_onnx.SpeakerEmbeddingExtractorConfig(
+                model=str(emb),
+                num_threads=threads,
+                provider="cpu",
+            ),
+            clustering=sherpa_onnx.FastClusteringConfig(
+                num_clusters=num_clusters,
+                threshold=0.5,
+            ),
+            min_duration_on=0.3,
+            min_duration_off=0.5,
+        )
+        if not config.validate():
+            return []
+        sd = sherpa_onnx.OfflineSpeakerDiarization(config)
+        _DIAR_CACHE[cache_key] = sd
     audio = np.ascontiguousarray(samples, dtype=np.float32)
     expected = int(getattr(sd, "sample_rate", 16000) or 16000)
     if sr != expected and sr > 0:
@@ -128,7 +157,20 @@ def diarize(wav: Path, speaker_count: int | None) -> list[dict[str, Any]]:
         t_old = np.linspace(0.0, duration, audio.shape[0], endpoint=False)
         t_new = np.linspace(0.0, duration, n, endpoint=False)
         audio = np.interp(t_new, t_old, audio).astype(np.float32)
-    result = sd.process(audio)
+
+    def _progress(processed: int, total: int) -> int:
+        if cancel is not None and cancel.is_set():
+            return 1
+        if on_progress is not None and total:
+            on_progress(int(processed), int(total))
+        return 0
+
+    try:
+        result = sd.process(audio, callback=_progress)
+    except TypeError:
+        result = sd.process(audio)
+    if cancel is not None and cancel.is_set():
+        raise RuntimeError("cancelled")
     turns = []
     order: dict[int, str] = {}
     for item in iter_diar_segments(result):

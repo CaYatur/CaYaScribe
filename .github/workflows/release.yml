@@ -46,5 +46,5 @@ jobs:
 
             v0.1: the Python sidecar is still required for transcription until the embedded runtime ships.
           releaseDraft: false
-          prerelease: true
+          prerelease: false
           args: --bundles nsis

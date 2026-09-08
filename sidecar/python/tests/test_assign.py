@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from cayascribe.diar.cluster import (
     assign_speakers,
     embedding_path,
@@ -91,3 +93,32 @@ def test_no_turns_all_a():
     segs = [{"id": "s0", "speakerId": "X", "startMs": 0, "endMs": 10, "text": "x"}]
     out = assign_speakers(segs, [])
     assert out[0]["speakerId"] == "A"
+
+
+def test_embedding_path_uses_requested(monkeypatch, tmp_path: Path):
+    chosen = tmp_path / "eres2.onnx"
+    chosen.write_bytes(b"onnx")
+    default = tmp_path / "wespeaker.onnx"
+    default.write_bytes(b"onnx2")
+
+    class Rec:
+        def __init__(self, path: Path):
+            self._path = path
+
+        def local_path(self) -> Path:
+            return self._path
+
+        def install_root(self) -> Path:
+            return self._path
+
+    def fake_by_id(asset_id: str) -> Rec:
+        if asset_id == "eres2net-large":
+            return Rec(chosen)
+        if asset_id == "wespeaker-resnet293-lm":
+            return Rec(default)
+        raise KeyError(asset_id)
+
+    monkeypatch.setattr("cayascribe.diar.cluster.by_id", fake_by_id)
+    assert embedding_path("eres2net-large") == chosen
+    assert embedding_path() == default
+    assert embedding_path("missing") is None

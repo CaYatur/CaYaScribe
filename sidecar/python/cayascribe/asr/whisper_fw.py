@@ -8,6 +8,14 @@ from typing import Any
 
 from cayascribe.asr.router import resolve_asr_language
 from cayascribe.assets.manifest import whisper_dir_for_quality
+from cayascribe.perf import configure_threads, cpu_thread_count, decode_params
+
+_MODEL_CACHE: dict[str, tuple[Any, str, str]] = {}
+_MODEL_LOCK = threading.Lock()
+
+
+def clear_model_cache() -> None:
+    _MODEL_CACHE.clear()
 
 
 def _cuda_device_count() -> int:
@@ -59,37 +67,62 @@ def device_and_compute() -> tuple[str, str]:
 def open_whisper_model(model_dir: Path | str) -> tuple[Any, str, str]:
     from faster_whisper import WhisperModel
 
+    configure_threads()
+    threads = cpu_thread_count()
     device, compute = device_and_compute()
+    resolved = str(Path(model_dir))
+    key = f"{resolved}|{device}|{compute}|{threads}"
+    with _MODEL_LOCK:
+        hit = _MODEL_CACHE.get(key)
+        if hit is not None:
+            return hit
     try:
         model = WhisperModel(
-            str(model_dir),
+            resolved,
             device=device,
             compute_type=compute,
+            cpu_threads=threads if device == "cpu" else 0,
+            num_workers=1,
             local_files_only=True,
         )
-        return model, device, compute
+        loaded = (model, device, compute)
     except Exception:
         if device == "cpu":
             raise
+        cpu_key = f"{resolved}|cpu|int8|{threads}"
+        with _MODEL_LOCK:
+            hit = _MODEL_CACHE.get(cpu_key)
+            if hit is not None:
+                return hit
         model = WhisperModel(
-            str(model_dir),
+            resolved,
             device="cpu",
             compute_type="int8",
+            cpu_threads=threads,
+            num_workers=1,
             local_files_only=True,
         )
-        return model, "cpu", "int8"
+        loaded = (model, "cpu", "int8")
+        key = cpu_key
+    with _MODEL_LOCK:
+        _MODEL_CACHE[key] = loaded
+    return loaded
 
 
-def detect_language(wav: Path, cancel: threading.Event | None = None) -> str | None:
+def detect_language(
+    wav: Path,
+    cancel: threading.Event | None = None,
+    model_dir: Path | None = None,
+) -> str | None:
     """Whisper LID on the first ~30s. Qwen-ONNX auto-LID is unreliable for Turkish."""
     if cancel is not None and cancel.is_set():
         return None
-    model_dir = None
-    for quality in ("fast", "balanced", "max"):
-        _name, found = whisper_dir_for_quality(quality)
-        if found is not None:
-            model_dir = found
-            break
+    if model_dir is None:
+        for quality in ("fast", "balanced", "max"):
+            _name, found = whisper_dir_for_quality(quality)
+            if found is not None:
+                model_dir = found
+                break
     if model_dir is None:
         return None
     import numpy as np
@@ -108,8 +141,12 @@ def detect_language(wav: Path, cancel: threading.Event | None = None) -> str | N
         language=None,
         vad_filter=True,
         word_timestamps=False,
+        without_timestamps=True,
         beam_size=1,
+        best_of=1,
+        temperature=0.0,
         condition_on_previous_text=False,
+        language_detection_segments=1,
     )
     lang = getattr(info, "language", None)
     conf = float(getattr(info, "language_probability", 1.0) or 0.0)
@@ -135,15 +172,28 @@ def transcribe(
         raise RuntimeError("asr_model_missing")
     model, device, compute = open_whisper_model(model_dir)
     lang = resolve_asr_language(language)
+    duration = 0.0
+    try:
+        import soundfile as sf
+
+        duration = float(sf.info(str(wav)).duration or 0.0)
+    except Exception:
+        duration = 0.0
+    params = decode_params(quality)
     segments, info = model.transcribe(
         str(wav),
         language=lang,
         vad_filter=True,
-        word_timestamps=True,
+        vad_parameters={"min_silence_duration_ms": 400, "speech_pad_ms": 200},
+        word_timestamps=False,
         condition_on_previous_text=False,
-        beam_size=5 if quality in ("high", "max") else 1,
+        beam_size=int(params["beam_size"]),
+        best_of=int(params["best_of"]),
+        temperature=float(params["temperature"]),
     )
     detected = getattr(info, "language", language or "auto")
+    if duration <= 0:
+        duration = float(getattr(info, "duration", 0.0) or 0.0)
     yield {
         "type": "meta",
         "language": detected,
@@ -151,9 +201,26 @@ def transcribe(
         "device": device,
         "compute": compute,
     }
+    yield {
+        "type": "progress",
+        "stage": "asr",
+        "stagePct": 0,
+        "stageDone": 0,
+        "stageTotal": int(duration) if duration > 0 else 0,
+    }
     for i, seg in enumerate(segments):
         if cancel is not None and cancel.is_set():
             return
+        end_s = float(getattr(seg, "end", 0.0) or 0.0)
+        if duration > 0:
+            stage_pct = min(100, int(100 * end_s / duration))
+            yield {
+                "type": "progress",
+                "stage": "asr",
+                "stagePct": stage_pct,
+                "stageDone": int(end_s),
+                "stageTotal": int(duration),
+            }
         text = (seg.text or "").strip()
         if not text:
             continue
@@ -163,12 +230,5 @@ def transcribe(
             "startMs": int(seg.start * 1000),
             "endMs": int(seg.end * 1000),
             "text": text,
-            "words": [
-                {
-                    "startMs": int(w.start * 1000),
-                    "endMs": int(w.end * 1000),
-                    "word": w.word,
-                }
-                for w in (seg.words or [])
-            ],
+            "words": [],
         }

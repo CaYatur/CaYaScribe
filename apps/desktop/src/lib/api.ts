@@ -81,4 +81,6 @@ export type JobBody = {
   quality: "fast" | "balanced" | "high" | "max";
   speakerCount: number | null;
   enhance: "off" | "auto" | "on";
+  asrId?: string | null;
+  embedId?: string | null;
 };

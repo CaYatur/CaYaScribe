@@ -353,6 +353,8 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
   color: var(--muted);
 }
 .bar { height: 6px; background: #2a3340; border-radius: 99px; overflow: hidden; margin-top: 8px; }
+.bar.stage { height: 5px; margin-top: 6px; }
+.stage-line { margin: 10px 0 0; font-size: 11px; color: var(--text-2); }
 .bar > span {
   display: block;
   height: 100%;
@@ -639,14 +641,22 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
 .eq span:nth-child(5) { animation-delay: 0.3s; }
 .eq span:nth-child(6) { animation-delay: 0.16s; }
 .eq span:nth-child(7) { animation-delay: 0.22s; }
-.working-bar {
-  width: min(280px, 70%);
-  height: 6px;
+.working-meters {
+  width: min(320px, 80%);
   margin-top: 18px;
+  display: grid;
+  gap: 12px;
+}
+.working-meter { width: 100%; }
+.working-bar {
+  width: 100%;
+  height: 6px;
+  margin-top: 6px;
   background: #2a3340;
   border-radius: 99px;
   overflow: hidden;
 }
+.working-bar.stage { height: 5px; }
 .working-bar > span {
   display: block;
   height: 100%;
@@ -654,10 +664,14 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
   transition: width 0.35s ease;
 }
 .working-pct {
-  margin-top: 8px !important;
+  margin: 0 !important;
   font-variant-numeric: tabular-nums;
   color: var(--text-2);
   font-size: 13px;
+}
+.working-cancel {
+  margin-top: 16px;
+  min-width: 8.5rem;
 }
 @keyframes working-ring {
   0% { transform: scale(0.55); opacity: 0.7; }

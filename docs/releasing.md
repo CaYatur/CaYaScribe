@@ -21,7 +21,8 @@ git push origin v0.1.0
 The [release workflow](../.github/workflows/release.yml) runs on `v*` tags:
 
 - Builds the Windows NSIS installer (`CaYaScribe_x.y.z_x64-setup.exe`)
-- Creates a GitHub Release (English notes; Turkish blurb in the body)
+- Creates a **published** GitHub Release (not a draft or pre-release; marked Latest)
+- English notes; Turkish blurb in the body
 - Uploads the installer as a release asset
 
 Unsigned builds will show a SmartScreen warning. Code signing is a later step.

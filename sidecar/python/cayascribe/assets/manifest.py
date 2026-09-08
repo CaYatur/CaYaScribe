@@ -247,9 +247,15 @@ def asr_ids_for_quality(quality: str) -> list[str]:
     return list(QUALITY_ASR_IDS.get(quality, QUALITY_ASR_IDS["balanced"]))
 
 
-def quality_ready(quality: str) -> bool:
+def quality_ready(quality: str, asr_id: str | None = None) -> bool:
     if ffmpeg_exe() is None:
         return False
+    if asr_id:
+        try:
+            rec = by_id(asr_id)
+        except KeyError:
+            return False
+        return rec.kind == "asr" and rec.present()
     for asset_id in asr_ids_for_quality(quality):
         try:
             if by_id(asset_id).present():

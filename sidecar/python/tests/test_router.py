@@ -83,3 +83,31 @@ def test_cjk_ratio_detects_chinese():
 def test_high_quality_ids_prefer_whisper_tr():
     assert QUALITY_ASR_IDS["high"][0] == "whisper-large-v3-tr"
     assert QUALITY_ASR_IDS["max"][0] == "whisper-large-v3-tr"
+
+
+def test_manifest_quality_tiers_per_model():
+    from cayascribe.assets.manifest import by_id
+
+    assert by_id("whisper-small-ct2").qualityTiers == ["fast"]
+    assert by_id("whisper-turbo-ct2").qualityTiers == ["balanced", "high"]
+    assert by_id("whisper-large-v3-ct2").qualityTiers == ["max"]
+    assert by_id("whisper-large-v3-tr").qualityTiers == ["high", "max"]
+
+
+def test_engine_asset_covers_forced_ids():
+    from cayascribe.asr.engine import ENGINE_ASSET
+
+    assert ENGINE_ASSET["whisper-turbo"] == "whisper-turbo-ct2"
+    assert ENGINE_ASSET["whisper-large-v3-tr"] == "whisper-large-v3-tr"
+    assert ENGINE_ASSET["qwen-0.6b"] == "qwen3-asr-0.6b"
+
+
+def test_jobcreate_blank_model_ids_are_none():
+    from cayascribe.models import JobCreate
+
+    job = JobCreate(mediaPath=r"C:\a.wav", asrId="", embedId="auto")
+    assert job.asrId is None
+    assert job.embedId is None
+    job2 = JobCreate(mediaPath=r"C:\a.wav", asrId="whisper-turbo-ct2", embedId="titanet-small")
+    assert job2.asrId == "whisper-turbo-ct2"
+    assert job2.embedId == "titanet-small"

@@ -20,19 +20,51 @@ type JobState = {
   stage: string;
   pct: number;
   error?: string;
+  stagePct?: number;
+  stageDone?: number;
+  stageTotal?: number;
 };
 
-const ASR_FOR_QUALITY: Record<JobBody["quality"], string[]> = {
-  fast: ["whisper-small-ct2"],
-  balanced: ["whisper-turbo-ct2", "whisper-large-v3-tr"],
-  high: ["whisper-large-v3-tr", "whisper-turbo-ct2", "qwen3-asr-0.6b"],
-  max: ["whisper-large-v3-tr", "whisper-large-v3-ct2", "qwen3-asr-0.6b"],
-};
+const EMBED_IDS = ["wespeaker-resnet293-lm", "eres2net-large", "titanet-large", "titanet-small"];
+const QUALITY_ORDER: JobBody["quality"][] = ["fast", "balanced", "high", "max"];
+const QUALITY_FALLBACK: JobBody["quality"][] = ["fast", "balanced", "high"];
+const ASR_KEY = "cayascribe.asrId";
+const EMBED_KEY = "cayascribe.embedId";
 
-function qualityAvailable(list: AssetRow[], q: JobBody["quality"]): boolean {
-  const ffmpeg = list.some((a) => a.kind === "ffmpeg" && a.present);
-  const asr = ASR_FOR_QUALITY[q].some((id) => list.some((a) => a.id === id && a.present));
-  return ffmpeg && asr;
+function readStored(key: string): string {
+  try {
+    return localStorage.getItem(key) || "";
+  } catch {
+    return "";
+  }
+}
+
+function writeStored(key: string, value: string) {
+  try {
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+function preferAsrId(list: AssetRow[], current: string): string {
+  if (current && list.some((a) => a.id === current && a.kind === "asr" && a.present)) return current;
+  const present = list.filter((a) => a.kind === "asr" && a.present);
+  return present.find((a) => a.recommended)?.id || present[0]?.id || "";
+}
+
+function qualityTiersFor(row: AssetRow | undefined): JobBody["quality"][] {
+  const raw = (row?.qualityTiers || []).filter((q): q is JobBody["quality"] =>
+    QUALITY_ORDER.includes(q as JobBody["quality"]),
+  );
+  if (raw.length) return QUALITY_ORDER.filter((q) => raw.includes(q));
+  return QUALITY_FALLBACK;
+}
+
+function clampQuality(row: AssetRow | undefined, current: JobBody["quality"]): JobBody["quality"] {
+  const tiers = qualityTiersFor(row);
+  return tiers.includes(current) ? current : (tiers[tiers.length - 1] ?? current);
 }
 
 export default function App() {
@@ -45,6 +77,8 @@ export default function App() {
   const [speakerCount, setSpeakerCount] = useState("");
   const [language, setLanguage] = useState("auto");
   const [quality, setQuality] = useState<JobBody["quality"]>("balanced");
+  const [asrId, setAsrId] = useState(() => readStored(ASR_KEY));
+  const [embedId, setEmbedId] = useState(() => readStored(EMBED_KEY));
   const [enhance, setEnhance] = useState<JobBody["enhance"]>("auto");
   const [job, setJob] = useState<JobState | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -60,6 +94,8 @@ export default function App() {
   const [showModels, setShowModels] = useState(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
   const jobAbort = useRef<AbortController | null>(null);
+  const jobIdRef = useRef<string | null>(null);
+  const jobLive = useRef(false);
 
   function changeLocale(next: Locale) {
     setLocale(next);
@@ -71,13 +107,43 @@ export default function App() {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  const qualityOptions: { id: JobBody["quality"]; label: string; ready: boolean }[] = [
-    { id: "fast", label: t.qualityFast, ready: qualityAvailable(assets, "fast") },
-    { id: "balanced", label: t.qualityBalanced, ready: qualityAvailable(assets, "balanced") },
-    { id: "high", label: t.qualityHigh, ready: qualityAvailable(assets, "high") },
-    { id: "max", label: t.qualityMax, ready: qualityAvailable(assets, "max") },
-  ];
-  const canStartQuality = qualityAvailable(assets, quality);
+  useEffect(() => {
+    const row = assets.find((a) => a.id === asrId);
+    const tiers = qualityTiersFor(row);
+    if (!tiers.length) return;
+    setQuality((cur) => (tiers.includes(cur) ? cur : tiers[tiers.length - 1]));
+  }, [asrId, assets]);
+
+  const ffmpegOk = assets.some((a) => a.kind === "ffmpeg" && a.present);
+  const asrAll = assets.filter((a) => a.kind === "asr");
+  const asrPresent = asrAll.filter((a) => a.present);
+  const selectedAsr = asrAll.find((a) => a.id === asrId);
+  const qualityIds = qualityTiersFor(selectedAsr);
+  const qualityLabels: Record<JobBody["quality"], string> = {
+    fast: t.qualityFast,
+    balanced: t.qualityBalanced,
+    high: t.qualityHigh,
+    max: t.qualityMax,
+  };
+  const qualityOptions = qualityIds.map((id) => ({ id, label: qualityLabels[id] }));
+  const qualityValue = qualityOptions.some((q) => q.id === quality)
+    ? quality
+    : (qualityOptions[qualityOptions.length - 1]?.id ?? quality);
+  const embedPresent = assets.filter((a) => a.kind === "diarization" && a.present && EMBED_IDS.includes(a.id));
+  const asrPickedOk = Boolean(asrId) && asrPresent.some((a) => a.id === asrId);
+  const canStartModels = ffmpegOk && asrPickedOk;
+
+  function pickAsr(id: string) {
+    setAsrId(id);
+    writeStored(ASR_KEY, id);
+    const row = asrAll.find((a) => a.id === id);
+    setQuality((cur) => clampQuality(row, cur));
+  }
+
+  function pickEmbed(id: string) {
+    setEmbedId(id);
+    writeStored(EMBED_KEY, id);
+  }
 
   const refreshAssets = useCallback(async () => {
     const data = await api.assets();
@@ -88,10 +154,17 @@ export default function App() {
     }
     setPicked(next);
     if (data.assets.some((a) => !a.present && a.recommended)) setShowModels(true);
-    const readyQs: JobBody["quality"][] = ["fast", "balanced", "high", "max"].filter((q) =>
-      qualityAvailable(data.assets, q as JobBody["quality"]),
-    ) as JobBody["quality"][];
-    setQuality((cur) => (qualityAvailable(data.assets, cur) ? cur : readyQs[0] ?? cur));
+    setAsrId((cur) => {
+      const nextId = preferAsrId(data.assets, cur);
+      writeStored(ASR_KEY, nextId);
+      return nextId;
+    });
+    setEmbedId((cur) => {
+      const keep = cur && data.assets.some((a) => a.id === cur && a.present);
+      const nextId = keep ? cur : "";
+      writeStored(EMBED_KEY, nextId);
+      return nextId;
+    });
   }, []);
 
   useEffect(() => {
@@ -192,15 +265,19 @@ export default function App() {
     const body: JobBody = {
       mediaPath,
       language,
-      quality,
+      quality: qualityValue,
       speakerCount: n && Number.isFinite(n) ? n : null,
       enhance,
+      asrId: asrId || null,
+      embedId: embedId || null,
     };
     jobAbort.current?.abort();
     const ac = new AbortController();
     jobAbort.current = ac;
     try {
       const { jobId: id } = await api.createJob(body);
+      jobIdRef.current = id;
+      jobLive.current = true;
       setJobId(id);
       setSegments([]);
       setSpeakers([]);
@@ -209,9 +286,19 @@ export default function App() {
         api.jobUrl(id),
         sidecar().token,
         (event, data) => {
+          if (!jobLive.current || ac.signal.aborted) return;
           const d = data as Record<string, unknown>;
           if (event === "progress") {
-            setJob({ stage: String(d.stage ?? ""), pct: Number(d.pct ?? 0) });
+            const stageDone = d.stageDone != null ? Number(d.stageDone) : undefined;
+            const stageTotal = d.stageTotal != null ? Number(d.stageTotal) : undefined;
+            const stagePct = d.stagePct != null ? Number(d.stagePct) : undefined;
+            setJob({
+              stage: String(d.stage ?? ""),
+              pct: Number(d.pct ?? 0),
+              stagePct: Number.isFinite(stagePct) ? stagePct : undefined,
+              stageDone: Number.isFinite(stageDone) ? stageDone : undefined,
+              stageTotal: Number.isFinite(stageTotal) ? stageTotal : undefined,
+            });
           }
           if (event === "done") {
             setSegments((d.segments as Segment[]) || []);
@@ -219,6 +306,8 @@ export default function App() {
             setJob({ stage: "done", pct: 100 });
           }
           if (event === "cancelled") {
+            jobLive.current = false;
+            jobIdRef.current = null;
             setJob(null);
             setJobId(null);
           }
@@ -232,14 +321,17 @@ export default function App() {
     } catch (e) {
       const name = e instanceof Error ? e.name : "";
       if (name === "AbortError") return;
+      if (!jobLive.current) return;
       setErr(String(e));
     }
   }
 
   async function cancelRunningJob() {
-    const id = jobId;
+    const id = jobIdRef.current ?? jobId;
+    jobLive.current = false;
     jobAbort.current?.abort();
     jobAbort.current = null;
+    jobIdRef.current = null;
     setJob(null);
     setJobId(null);
     if (!id) return;
@@ -361,22 +453,59 @@ export default function App() {
             </select>
           </label>
           <label className="field">
-            {t.quality}
+            {t.asrModel}
             <select
-              value={quality}
+              value={asrId}
               onChange={(e) => {
-                const next = e.target.value as JobBody["quality"];
-                if (qualityAvailable(assets, next)) setQuality(next);
+                const next = e.target.value;
+                const row = asrAll.find((a) => a.id === next);
+                if (row && !row.present) {
+                  setShowModels(true);
+                  return;
+                }
+                pickAsr(next);
               }}
             >
+              {asrAll.length === 0 && <option value="">{t.noFile}</option>}
+              {asrAll.map((a) => (
+                <option key={a.id} value={a.id} disabled={!a.present}>
+                  {assetLabel(locale, a.id, a.displayName)}
+                  {a.recommended ? ` · ${t.recommended}` : ""}
+                  {a.present ? "" : ` (${t.qualityLocked})`}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="hint">{t.asrModelHint}</p>
+          <label className="field">
+            {t.quality}
+            <select
+              value={qualityValue}
+              disabled={!asrPickedOk || qualityOptions.length === 0}
+              onChange={(e) => setQuality(e.target.value as JobBody["quality"])}
+            >
               {qualityOptions.map((q) => (
-                <option key={q.id} value={q.id} disabled={!q.ready}>
-                  {q.ready ? q.label : `${q.label} (${t.qualityLocked})`}
+                <option key={q.id} value={q.id}>
+                  {q.label}
                 </option>
               ))}
             </select>
           </label>
           <p className="hint">{t.qualityHint}</p>
+          {embedPresent.length > 0 && (
+            <label className="field">
+              {t.embedModel}
+              <select value={embedId} onChange={(e) => pickEmbed(e.target.value)}>
+                <option value="">{t.embedModelAuto}</option>
+                {embedPresent.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {assetLabel(locale, a.id, a.displayName)}
+                    {a.recommended ? ` · ${t.recommended}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="field">
             {t.enhance}
             <select value={enhance} onChange={(e) => setEnhance(e.target.value as JobBody["enhance"])}>
@@ -386,24 +515,36 @@ export default function App() {
             </select>
           </label>
           <div className="panel-actions">
-            {!canStartQuality && (
-              <p className="hint start-hint">{t.startNeedsModels}</p>
+            {!canStartModels && (
+              <p className="hint start-hint">
+                {asrPresent.length > 0 ? t.pickDownloadedModel : t.startNeedsModels}
+              </p>
             )}
             <div className="row">
-              <button className="btn primary" disabled={!ready || jobBusy || !mediaPath || !canStartQuality} onClick={startJob}>
+              <button className="btn primary" disabled={!ready || jobBusy || !mediaPath || !canStartModels} onClick={startJob}>
                 {t.start}
               </button>
-              {!canStartQuality && (
+              {!canStartModels && (
                 <button className="btn" onClick={() => setShowModels(true)}>{t.settings}</button>
               )}
-              {jobId && jobBusy && (
-                <button className="btn" onClick={() => void cancelRunningJob()}>{t.cancel}</button>
+              {jobBusy && (
+                <button className="btn" type="button" onClick={() => void cancelRunningJob()}>{t.cancel}</button>
               )}
             </div>
             {job && (
               <div className="progress">
-                {job.error ? job.error : `${stageLabel(locale, job.stage)} · %${job.pct}`}
+                {job.error ? job.error : `${t.stageOverall} · ${stageLabel(locale, job.stage)} · %${job.pct}`}
                 <div className="bar"><span style={{ width: `${job.pct}%` }} /></div>
+                {!job.error && job.stagePct != null && (
+                  <>
+                    <p className="stage-line">
+                      {t.stageCurrent} · {stageLabel(locale, job.stage)}
+                      {job.stageTotal ? ` · ${job.stageDone ?? 0}/${job.stageTotal}` : ""}
+                      {` · %${job.stagePct}`}
+                    </p>
+                    <div className="bar stage"><span style={{ width: `${job.stagePct}%` }} /></div>
+                  </>
+                )}
               </div>
             )}
             {err && <p className="error">{err}</p>}
@@ -470,10 +611,29 @@ export default function App() {
               {mediaPath && (
                 <p className="working-file">{mediaPath.split(/[/\\]/).pop()}</p>
               )}
-              <div className="working-bar">
-                <span style={{ width: `${Math.max(4, job.pct)}%` }} />
+              <div className="working-meters">
+                <div className="working-meter">
+                  <p className="working-pct">{t.stageOverall} · %{job.pct}</p>
+                  <div className="working-bar">
+                    <span style={{ width: `${Math.max(4, job.pct)}%` }} />
+                  </div>
+                </div>
+                {job.stagePct != null && (
+                  <div className="working-meter">
+                    <p className="working-pct">
+                      {t.stageCurrent} · {stageLabel(locale, job.stage)}
+                      {job.stageTotal ? ` · ${job.stageDone ?? 0}/${job.stageTotal}` : ""}
+                      {` · %${job.stagePct}`}
+                    </p>
+                    <div className="working-bar stage">
+                      <span style={{ width: `${Math.max(4, job.stagePct)}%` }} />
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="working-pct">%{job.pct}</p>
+              <button className="btn working-cancel" type="button" onClick={() => void cancelRunningJob()}>
+                {t.cancel}
+              </button>
             </div>
           ) : (
             <div className="empty idle">

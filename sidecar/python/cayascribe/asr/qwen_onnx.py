@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-import os
 import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 from cayascribe.asr.router import QWEN_LANG_NAMES, resolve_asr_language
+from cayascribe.perf import cpu_thread_count
+
+_REC_CACHE: dict[tuple[str, str, int], Any] = {}
 
 CHUNK_MS = 30_000
 
@@ -79,19 +81,48 @@ def transcribe_qwen(
     import soundfile as sf
 
     conv, enc, dec, tok = _files(model_dir)
-    threads = max(2, min(8, os.cpu_count() or 2))
-    rec = sherpa_onnx.OfflineRecognizer.from_qwen3_asr(
-        conv_frontend=conv,
-        encoder=enc,
-        decoder=dec,
-        tokenizer=tok,
-        num_threads=threads,
-        sample_rate=16000,
-        feature_dim=128,
-        provider="cpu",
-        max_total_len=1024,
-        max_new_tokens=256,
-    )
+    threads = cpu_thread_count()
+    rec = None
+    used_provider = "cpu"
+    providers: list[str] = []
+    try:
+        from cayascribe.asr.whisper_fw import cuda_usable
+
+        if cuda_usable():
+            providers.append("cuda")
+    except Exception:
+        pass
+    providers.append("cpu")
+    last_exc: Exception | None = None
+    for provider in providers:
+        key = (str(model_dir), provider, threads)
+        cached = _REC_CACHE.get(key)
+        if cached is not None:
+            rec = cached
+            used_provider = provider
+            break
+        try:
+            built = sherpa_onnx.OfflineRecognizer.from_qwen3_asr(
+                conv_frontend=conv,
+                encoder=enc,
+                decoder=dec,
+                tokenizer=tok,
+                num_threads=threads,
+                sample_rate=16000,
+                feature_dim=128,
+                provider=provider,
+                max_total_len=1024,
+                max_new_tokens=256,
+            )
+            _REC_CACHE[key] = built
+            rec = built
+            used_provider = provider
+            break
+        except Exception as exc:
+            last_exc = exc
+            continue
+    if rec is None:
+        raise last_exc or RuntimeError("qwen_recognizer_failed")
     samples, sr = sf.read(str(wav), dtype="float32")
     if samples.ndim > 1:
         samples = samples.mean(axis=1)
@@ -101,7 +132,7 @@ def transcribe_qwen(
         "type": "meta",
         "language": resolve_asr_language(language) or language or "auto",
         "engine": f"{engine_name}:{model_dir.name}",
-        "device": "cpu",
+        "device": used_provider,
         "compute": "int8",
     }
     windows = _chunks(audio.shape[0], int(sr))
@@ -112,6 +143,9 @@ def transcribe_qwen(
         yield {
             "type": "progress",
             "stage": "asr",
+            "stagePct": int(100 * wi / max(len(windows), 1)),
+            "stageDone": wi,
+            "stageTotal": len(windows),
             "pct": 35 + int(50 * wi / max(len(windows), 1)),
         }
         piece = audio[start:end]

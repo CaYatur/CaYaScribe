@@ -157,3 +157,21 @@ def test_remove_refuses_assets_root(tmp_path: Path, monkeypatch):
     except RuntimeError as exc:
         assert "refuse_delete_assets_root" in str(exc)
     assert keep.exists()
+
+
+def test_quality_ready_explicit_asr_skips_quality_map(monkeypatch, tmp_path: Path):
+    from cayascribe.assets.manifest import quality_ready
+
+    class Rec:
+        kind = "asr"
+
+        def present(self) -> bool:
+            return True
+
+    monkeypatch.setattr("cayascribe.assets.manifest.ffmpeg_exe", lambda: tmp_path / "ffmpeg.exe")
+    monkeypatch.setattr(
+        "cayascribe.assets.manifest.by_id",
+        lambda asset_id: Rec() if asset_id == "whisper-medium-ct2" else (_ for _ in ()).throw(KeyError(asset_id)),
+    )
+    assert quality_ready("fast", "whisper-medium-ct2") is True
+    assert quality_ready("fast", "missing-model") is False
