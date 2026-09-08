@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { api, setSidecar, sidecar, type AssetRow, type JobBody } from "./lib/api";
@@ -39,7 +39,6 @@ export default function App() {
   const t = messages(locale);
   const [ready, setReady] = useState(false);
   const [assets, setAssets] = useState<AssetRow[]>([]);
-  const [showMissing, setShowMissing] = useState(false);
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [mediaPath, setMediaPath] = useState("");
   const [speakerCount, setSpeakerCount] = useState("");
@@ -69,8 +68,6 @@ export default function App() {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  const missing = useMemo(() => assets.filter((a) => !a.present), [assets]);
-
   const qualityOptions: { id: JobBody["quality"]; label: string; ready: boolean }[] = [
     { id: "fast", label: t.qualityFast, ready: qualityAvailable(assets, "fast") },
     { id: "balanced", label: t.qualityBalanced, ready: qualityAvailable(assets, "balanced") },
@@ -87,7 +84,7 @@ export default function App() {
       if (!a.present && a.recommended) next[a.id] = true;
     }
     setPicked(next);
-    if (data.assets.some((a) => !a.present && a.recommended)) setShowMissing(true);
+    if (data.assets.some((a) => !a.present && a.recommended)) setShowModels(true);
     const readyQs: JobBody["quality"][] = ["fast", "balanced", "high", "max"].filter((q) =>
       qualityAvailable(data.assets, q as JobBody["quality"]),
     ) as JobBody["quality"][];
@@ -150,7 +147,6 @@ export default function App() {
         clearInterval(timer);
         setDl(null);
         await refreshAssets();
-        if (!p.error) setShowMissing(false);
         if (p.error) setErr(p.error);
       }
     }, 400);
@@ -242,43 +238,6 @@ export default function App() {
         </div>
       </header>
 
-      {showMissing && missing.length > 0 && (
-        <div className="banner">
-          <div>
-            <h3>{t.missingTitle}</h3>
-            <p>{t.missingBody}</p>
-            <ul>
-              {missing.map((a) => (
-                <li key={a.id}>
-                  <input
-                    type="checkbox"
-                    checked={!!picked[a.id]}
-                    onChange={(e) => setPicked((p) => ({ ...p, [a.id]: e.target.checked }))}
-                  />
-                  <span>
-                    {a.recommended && <em className="badge">{t.recommended}</em>}
-                    {assetLabel(locale, a.id, a.displayName)} · {formatBytes(a.sizeBytes)}
-                    <small className="src"> {a.source}</small>
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {dl && (
-              <div className="progress">
-                {dl.assetId} {dl.source ? `· ${dl.source}` : ""} — {formatBytes(dl.bytes)} / {formatBytes(dl.total || 1)}
-                <div className="bar">
-                  <span style={{ width: `${Math.min(100, (dl.bytes / (dl.total || 1)) * 100)}%` }} />
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="row">
-            <button className="btn" onClick={() => setShowMissing(false)}>{t.later}</button>
-            <button className="btn primary" onClick={startDownload}>{t.download}</button>
-          </div>
-        </div>
-      )}
-
       <div className="layout">
         <aside className="panel">
           <label className="field">
@@ -336,24 +295,29 @@ export default function App() {
               <option value="on">{t.enhanceOn}</option>
             </select>
           </label>
-          <div className="row">
-            <button className="btn primary" disabled={!ready || jobBusy || !mediaPath || !canStartQuality} onClick={startJob}>
-              {t.start}
-            </button>
-            {jobId && jobBusy && (
-              <button className="btn" onClick={() => jobId && api.cancelJob(jobId)}>{t.cancel}</button>
+          <div className="panel-actions">
+            {!canStartQuality && (
+              <p className="hint start-hint">{t.startNeedsModels}</p>
             )}
-          </div>
-          {job && (
-            <div className="progress">
-              {job.error ? job.error : `${stageLabel(locale, job.stage)} · %${job.pct}`}
-              <div className="bar"><span style={{ width: `${job.pct}%` }} /></div>
+            <div className="row">
+              <button className="btn primary" disabled={!ready || jobBusy || !mediaPath || !canStartQuality} onClick={startJob}>
+                {t.start}
+              </button>
+              {!canStartQuality && (
+                <button className="btn" onClick={() => setShowModels(true)}>{t.settings}</button>
+              )}
+              {jobId && jobBusy && (
+                <button className="btn" onClick={() => jobId && api.cancelJob(jobId)}>{t.cancel}</button>
+              )}
             </div>
-          )}
-          {err && <p className="error">{err}</p>}
-          {!canStartQuality && (
-            <p className="hint">{t.startNeedsModels}</p>
-          )}
+            {job && (
+              <div className="progress">
+                {job.error ? job.error : `${stageLabel(locale, job.stage)} · %${job.pct}`}
+                <div className="bar"><span style={{ width: `${job.pct}%` }} /></div>
+              </div>
+            )}
+            {err && <p className="error">{err}</p>}
+          </div>
         </aside>
 
         <main className="editor">
@@ -450,10 +414,10 @@ export default function App() {
       )}
 
       {showModels && (
-        <div className="modal-back" onClick={() => setShowModels(false)}>
+        <div className="modal-back" onClick={() => { if (!dl) setShowModels(false); }}>
           <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
-            <h3>{t.settings}</h3>
-            <p className="hint">{t.missingBody}</p>
+            <h3>{t.missingTitle}</h3>
+            <p className="modal-lead">{t.missingBody}</p>
             <ul className="model-list">
               {assets.map((a) => (
                 <li key={a.id} className="model-row">

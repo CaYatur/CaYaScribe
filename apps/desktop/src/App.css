@@ -44,7 +44,7 @@ button { cursor: pointer; }
 .app {
   height: 100%;
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
 }
 
 .topbar {
@@ -66,8 +66,8 @@ button { cursor: pointer; }
   background: linear-gradient(90deg, transparent, var(--primary), transparent);
   opacity: 0.4;
 }
-.brand { display: flex; flex-direction: column; gap: 2px; }
-.brand-logo { height: 28px; width: auto; display: block; }
+.brand { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.brand-logo { height: 26px; width: auto; max-width: 220px; display: block; object-fit: contain; object-position: left center; }
 .brand span { color: var(--muted); font-size: 12px; }
 .top-actions { display: flex; gap: 8px; align-items: center; }
 .lang {
@@ -116,6 +116,24 @@ button { cursor: pointer; }
   padding: 16px 18px;
   overflow: auto;
   background: var(--bg-2);
+  display: flex;
+  flex-direction: column;
+}
+.panel-actions {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hint.start-hint {
+  margin: 0;
+  line-height: 1.45;
+}
+.modal-lead {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 .editor {
   padding: 16px 20px;
@@ -160,7 +178,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
 .model-list { list-style: none; padding: 0; margin: 0 0 12px; max-height: 46vh; overflow: auto; }
 .model-row { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .modal-wide { width: min(640px, 94vw); }
-.hint { font-size: 11px; color: var(--muted); margin-top: -6px; margin-bottom: 12px; }
+.hint { font-size: 11px; color: var(--muted); margin: 0 0 12px; line-height: 1.45; }
 
 .btn {
   border: 1px solid var(--line);

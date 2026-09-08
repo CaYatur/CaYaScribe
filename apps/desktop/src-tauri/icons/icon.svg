@@ -1,6 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="CaYaScribe">
-  <rect width="64" height="64" rx="14" fill="#111826"/>
-  <g transform="translate(8,13.6) scale(1.02)">
-    <polygon fill="#dc2626" points="47.33 0 34.18 8.71 8.62 8.71 8.62 29.55 34.07 29.55 47.33 36.7 0 36.7 0 0 47.33 0"/>
+  <rect width="64" height="64" fill="#111826"/>
+  <g fill="#f8fafc" transform="translate(20,14)">
+    <rect x="10" y="6" width="4" height="24" rx="1.5"/>
+    <rect x="18" y="0" width="4" height="36" rx="1.5"/>
+    <rect x="2" y="12" width="4" height="12" rx="1.5"/>
   </g>
+  <rect x="20" y="52" width="24" height="3" rx="1.5" fill="#dc2626"/>
 </svg>

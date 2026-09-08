@@ -1,8 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 268 40" role="img" aria-label="CaYaScribe">
-  <g transform="translate(0,1.6) scale(1)">
-    <polygon fill="#dc2626" points="47.33 0 34.18 8.71 8.62 8.71 8.62 29.55 34.07 29.55 47.33 36.7 0 36.7 0 0 47.33 0"/>
-  </g>
-  <text x="56" y="28" font-family="Inter, Segoe UI, sans-serif" font-size="22" font-weight="700" letter-spacing="-0.04em">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 188 28" role="img" aria-label="CaYaScribe">
+  <text x="0" y="22" font-family="Inter, Segoe UI, sans-serif" font-size="22" font-weight="700" letter-spacing="-0.045em">
     <tspan fill="#dc2626">CaYa</tspan><tspan fill="#f8fafc">Scribe</tspan>
   </text>
 </svg>
