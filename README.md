@@ -42,7 +42,7 @@ npm install
 npm run tauri dev
 ```
 
-On first run the app offers FFmpeg, Whisper turbo (everyday), Whisper large-v3 (noisy/hard audio, ~3 GB), and speaker models. You can uncheck large-v3, or enable **Fast** (small) for a smaller download.
+On first run the app offers FFmpeg, Whisper turbo (everyday), Qwen3-ASR 0.6B/1.7B (Turkish and noisy audio), and speaker models. Uncheck what you do not need.
 
 ## Quality profiles
 
@@ -50,8 +50,8 @@ On first run the app offers FFmpeg, Whisper turbo (everyday), Whisper large-v3 (
 | --- | --- |
 | Fast | Whisper `small` |
 | Balanced (default) | Whisper `large-v3-turbo` |
-| High | Turbo; Qwen3-ASR later |
-| Maximum | Whisper `large-v3` — best for noisy or hard-to-hear speech |
+| High | Qwen3-ASR 0.6B (CPU ONNX) when downloaded; else turbo |
+| Maximum | Qwen3-ASR 1.7B when downloaded; else 0.6B or Whisper `large-v3` |
 
 Speaker diarization is language-independent (sherpa-onnx + TitaNet). No Hugging Face token is required for the default path.
 

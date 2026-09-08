@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from cayascribe.assets.manifest import AssetRecord, ct2_model_dir
+from cayascribe.assets.manifest import AssetRecord, ct2_model_dir, qwen_model_dir
 
 
 def _asr() -> AssetRecord:
@@ -43,6 +43,18 @@ def test_ct2_dir_finds_model_bin(tmp_path: Path):
     d.mkdir()
     (d / "model.bin").write_bytes(b"0123456789")
     assert ct2_model_dir(d, min_bytes=8) == d
+
+
+def test_qwen_dir_requires_onnx_set(tmp_path: Path):
+    d = tmp_path / "qwen"
+    d.mkdir()
+    (d / "conv_frontend.onnx").write_bytes(b"x" * 10)
+    assert qwen_model_dir(d) is None
+    (d / "encoder.int8.onnx").write_bytes(b"e" * 1_000_001)
+    (d / "decoder.int8.onnx").write_bytes(b"d" * 1_000_001)
+    (d / "tokenizer").mkdir()
+    (d / "tokenizer" / "vocab.json").write_text("{}", encoding="utf-8")
+    assert qwen_model_dir(d) == d
 
 
 def test_ct2_dir_nested(tmp_path: Path):

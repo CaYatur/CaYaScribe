@@ -22,16 +22,16 @@ type JobState = {
   error?: string;
 };
 
-const ASR_FOR_QUALITY: Record<JobBody["quality"], string> = {
-  fast: "whisper-small-ct2",
-  balanced: "whisper-turbo-ct2",
-  high: "whisper-turbo-ct2",
-  max: "whisper-large-v3-ct2",
+const ASR_FOR_QUALITY: Record<JobBody["quality"], string[]> = {
+  fast: ["whisper-small-ct2"],
+  balanced: ["whisper-turbo-ct2", "qwen3-asr-0.6b"],
+  high: ["qwen3-asr-0.6b", "whisper-turbo-ct2"],
+  max: ["qwen3-asr-1.7b", "qwen3-asr-0.6b", "whisper-large-v3-ct2"],
 };
 
 function qualityAvailable(list: AssetRow[], q: JobBody["quality"]): boolean {
   const ffmpeg = list.some((a) => a.kind === "ffmpeg" && a.present);
-  const asr = list.some((a) => a.id === ASR_FOR_QUALITY[q] && a.present);
+  const asr = ASR_FOR_QUALITY[q].some((id) => list.some((a) => a.id === id && a.present));
   return ffmpeg && asr;
 }
 
@@ -549,7 +549,9 @@ export default function App() {
                     />
                     <span>
                       {a.recommended && <em className="badge">{t.recommended}</em>}
-                      {a.id === "whisper-large-v3-ct2" && <em className="badge hard">{t.hardAudio}</em>}
+                      {(a.id === "whisper-large-v3-ct2" || a.id === "qwen3-asr-1.7b") && (
+                        <em className="badge hard">{t.hardAudio}</em>
+                      )}
                       {assetLabel(locale, a.id, a.displayName)}
                       {assetHint(locale, a.id) && (
                         <small className="model-hint">{assetHint(locale, a.id)}</small>

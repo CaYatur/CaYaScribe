@@ -1,5 +1,5 @@
 from cayascribe.asr.router import parakeet_allowed, resolve_asr_language, select_engine
-from cayascribe.assets.manifest import QUALITY_ASR
+from cayascribe.assets.manifest import QUALITY_ASR, QUALITY_ASR_IDS
 
 
 def test_quality_maps_to_exact_whisper_repo():
@@ -32,32 +32,35 @@ def test_max_tr_without_qwen_is_whisper():
     assert select_engine(language="tr", quality="max", ui_locale="tr") == "whisper-large-v3"
 
 
-def test_qwen_needs_cu12x():
+def test_high_tr_prefers_qwen_onnx_without_cuda():
     assert (
         select_engine(
             language="tr",
-            quality="max",
+            quality="high",
             qwen_06=True,
-            cu12x=True,
-            vram_mb=8000,
+            cu12x=False,
         )
         == "qwen-0.6b"
     )
+
+
+def test_max_tr_prefers_qwen_17():
     assert (
         select_engine(
             language="tr",
             quality="max",
             qwen_06=True,
+            qwen_17=True,
             cu12x=False,
-            vram_mb=8000,
         )
-        == "whisper-large-v3"
+        == "qwen-1.7b"
     )
 
 
-def test_forced_qwen_without_cuda_errors():
-    try:
-        select_engine(language="tr", quality="high", forced="qwen", cu12x=False)
-        assert False, "expected error"
-    except ValueError as exc:
-        assert "engine_runtime_missing" in str(exc)
+def test_forced_qwen_uses_onnx_without_cuda():
+    assert select_engine(language="tr", quality="high", forced="qwen", qwen_06=True, cu12x=False) == "qwen-0.6b"
+
+
+def test_high_quality_ids_prefer_qwen():
+    assert QUALITY_ASR_IDS["high"][0] == "qwen3-asr-0.6b"
+    assert QUALITY_ASR_IDS["max"][0] == "qwen3-asr-1.7b"

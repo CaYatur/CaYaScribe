@@ -40,7 +40,7 @@ npm install
 npm run tauri dev
 ```
 
-İlk çalıştırmada FFmpeg, Whisper turbo (günlük), Whisper large-v3 (gürültülü/zorlu ses, ~3 GB) ve konuşmacı modelleri önerilir. large-v3’ü kaldırabilir veya daha küçük deneme için **Hızlı** (small) işaretleyebilirsiniz.
+İlk çalıştırmada FFmpeg, Whisper turbo (günlük), Qwen3-ASR 0.6B/1.7B (Türkçe ve gürültülü ses) ve konuşmacı modelleri önerilir. İstemediğini işaretten çıkar.
 
 ## Kalite profilleri
 
@@ -48,8 +48,8 @@ npm run tauri dev
 | --- | --- |
 | Hızlı | Whisper `small` |
 | Dengeli (varsayılan) | Whisper `large-v3-turbo` |
-| Yüksek | Turbo; Qwen3-ASR sonra |
-| Maksimum | Whisper `large-v3` — gürültülü veya zor duyulan konuşmalar için en iyisi |
+| Yüksek | İndirildiyse Qwen3-ASR 0.6B (CPU ONNX); yoksa turbo |
+| Maksimum | İndirildiyse Qwen3-ASR 1.7B; yoksa 0.6B veya Whisper `large-v3` |
 
 ## Gizlilik
 

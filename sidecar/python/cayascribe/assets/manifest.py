@@ -15,6 +15,14 @@ QUALITY_ASR = {
     "max": ("whisper-large-v3-ct2", "large-v3"),
 }
 
+# First present id wins. High/max prefer Qwen3-ASR (Turkish + noise) over Whisper.
+QUALITY_ASR_IDS = {
+    "fast": ["whisper-small-ct2"],
+    "balanced": ["whisper-turbo-ct2", "qwen3-asr-0.6b"],
+    "high": ["qwen3-asr-0.6b", "whisper-turbo-ct2"],
+    "max": ["qwen3-asr-1.7b", "qwen3-asr-0.6b", "whisper-large-v3-ct2"],
+}
+
 # CTranslate2 weights; git-LFS pointers are ~130 bytes. 50 MiB is below Whisper-small.
 MIN_CT2_BYTES = 50 * 1024 * 1024
 _CT2_NAMES = ("model.bin", "model.safetensors")
@@ -60,6 +68,37 @@ def ct2_model_dir(path: Path, *, min_bytes: int | None = None) -> Path | None:
             continue
         if any(_is_ct2_weight(child / name, min_bytes) for name in _CT2_NAMES):
             return child
+    return None
+
+
+def qwen_model_dir(path: Path) -> Path | None:
+    """Directory with sherpa-onnx Qwen3-ASR files, or None if incomplete."""
+
+    def _ok(d: Path) -> bool:
+        if not d.is_dir():
+            return False
+        conv = d / "conv_frontend.onnx"
+        tok = d / "tokenizer"
+        enc = next(iter(d.glob("encoder*.onnx")), None)
+        dec = next(iter(d.glob("decoder*.onnx")), None)
+        if not (conv.is_file() and tok.is_dir() and enc and dec):
+            return False
+        try:
+            return enc.stat().st_size > 1_000_000 and dec.stat().st_size > 1_000_000
+        except OSError:
+            return False
+
+    if _ok(path):
+        return path
+    if path.is_dir():
+        for child in path.iterdir():
+            if (
+                child.is_dir()
+                and child.name not in _SKIP_DIRS
+                and not child.name.startswith(".")
+                and _ok(child)
+            ):
+                return child
     return None
 
 
@@ -115,6 +154,8 @@ class AssetRecord:
     def present(self) -> bool:
         p = self.local_path()
         if self.kind == "asr":
+            if self.id.startswith("qwen3-asr"):
+                return qwen_model_dir(p) is not None
             return ct2_model_dir(p) is not None
         if p.is_file():
             return p.stat().st_size > 0
@@ -202,11 +243,20 @@ def ffmpeg_exe() -> Path | None:
     return p if p.is_file() else None
 
 
+def asr_ids_for_quality(quality: str) -> list[str]:
+    return list(QUALITY_ASR_IDS.get(quality, QUALITY_ASR_IDS["balanced"]))
+
+
 def quality_ready(quality: str) -> bool:
     if ffmpeg_exe() is None:
         return False
-    asset_id, _ = QUALITY_ASR.get(quality, QUALITY_ASR["balanced"])
-    return by_id(asset_id).present()
+    for asset_id in asr_ids_for_quality(quality):
+        try:
+            if by_id(asset_id).present():
+                return True
+        except KeyError:
+            continue
+    return False
 
 
 def whisper_dir_for_quality(quality: str) -> tuple[str, Path | None]:

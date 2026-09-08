@@ -70,13 +70,45 @@
       "displayName": "Whisper large-v3 (Maximum, hard audio)",
       "qualityTiers": ["max"],
       "required": false,
-      "recommended": true,
+      "recommended": false,
       "license": "MIT",
       "gated": false,
       "sizeBytes": 3100000000,
       "sha256": null,
       "hfRepo": "Systran/faster-whisper-large-v3",
       "relativePath": "asr/whisper-large-v3-ct2",
+      "urls": []
+    },
+    {
+      "id": "qwen3-asr-0.6b",
+      "kind": "asr",
+      "displayName": "Qwen3-ASR 0.6B (High, Turkish + noise)",
+      "qualityTiers": ["high", "max"],
+      "required": false,
+      "recommended": true,
+      "license": "Apache-2.0",
+      "gated": false,
+      "sizeBytes": 980000000,
+      "sha256": null,
+      "relativePath": "asr/qwen3-asr-0.6b",
+      "archiveRoot": "asr/qwen3-asr-0.6b",
+      "urls": [
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25.tar.bz2"
+      ]
+    },
+    {
+      "id": "qwen3-asr-1.7b",
+      "kind": "asr",
+      "displayName": "Qwen3-ASR 1.7B (Maximum, hard audio)",
+      "qualityTiers": ["max"],
+      "required": false,
+      "recommended": true,
+      "license": "Apache-2.0",
+      "gated": false,
+      "sizeBytes": 2400000000,
+      "sha256": null,
+      "hfRepo": "thieunv/sherpa-onnx-qwen3-asr-1.7B-int8",
+      "relativePath": "asr/qwen3-asr-1.7b",
       "urls": []
     },
     {

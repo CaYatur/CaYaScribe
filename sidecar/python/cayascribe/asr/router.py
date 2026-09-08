@@ -34,6 +34,48 @@ QWEN_LANGS = {
     "fil", "fa", "el", "hu", "mk", "ro",
 }
 
+QWEN_LANG_NAMES = {
+    "zh": "Chinese",
+    "en": "English",
+    "yue": "Cantonese",
+    "ar": "Arabic",
+    "de": "German",
+    "fr": "French",
+    "es": "Spanish",
+    "pt": "Portuguese",
+    "id": "Indonesian",
+    "it": "Italian",
+    "ko": "Korean",
+    "ru": "Russian",
+    "th": "Thai",
+    "vi": "Vietnamese",
+    "ja": "Japanese",
+    "tr": "Turkish",
+    "hi": "Hindi",
+    "ms": "Malay",
+    "nl": "Dutch",
+    "sv": "Swedish",
+    "da": "Danish",
+    "fi": "Finnish",
+    "pl": "Polish",
+    "cs": "Czech",
+    "fil": "Filipino",
+    "fa": "Persian",
+    "el": "Greek",
+    "hu": "Hungarian",
+    "mk": "Macedonian",
+    "ro": "Romanian",
+}
+
+
+def qwen_language_ok(language: str) -> bool:
+    lang = (language or "auto").strip().lower()
+    if lang in ("auto", "", "detect"):
+        return True
+    if lang == "tl":
+        lang = "fil"
+    return lang in QWEN_LANGS
+
 
 def parakeet_allowed(language: str, ui_locale: str, lid_confidence: float = 1.0) -> bool:
     lang = (language or "auto").lower()
@@ -61,18 +103,27 @@ def select_engine(
     forced: str | None = None,
 ) -> str:
     lang = (language or "auto").lower()
+    if lang == "tl":
+        lang = "fil"
     if forced == "parakeet" and lang == "tr":
         raise ValueError("parakeet_forbidden_for_tr")
-    if forced == "qwen" and not cu12x:
-        raise ValueError("engine_runtime_missing")
+    if forced == "qwen":
+        if qwen_17:
+            return "qwen-1.7b"
+        if qwen_06:
+            return "qwen-0.6b"
+        raise ValueError("asr_model_missing")
     if forced:
         return forced
 
-    if lang in QWEN_LANGS and quality in ("high", "max") and cu12x:
-        if qwen_17 and vram_mb >= 12288:
+    # sherpa-onnx Qwen3 INT8 runs on CPU — CUDA extra is not required.
+    if quality in ("high", "max") and qwen_language_ok(lang):
+        if quality == "max" and qwen_17:
             return "qwen-1.7b"
-        if qwen_06 and vram_mb >= 6144:
+        if qwen_06:
             return "qwen-0.6b"
+        if qwen_17:
+            return "qwen-1.7b"
 
     if (
         parakeet

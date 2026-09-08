@@ -5,7 +5,7 @@ import threading
 import uuid
 from typing import Any
 
-from cayascribe.asr.whisper_fw import transcribe
+from cayascribe.asr.engine import transcribe
 from cayascribe.assets.manifest import quality_ready
 from cayascribe.diar.cluster import assign_speakers, diarize
 from cayascribe.models import JobCreate
@@ -84,7 +84,7 @@ class JobRunner:
             segments: list[dict[str, Any]] = []
             engine = "whisper"
             language = req.language
-            for item in transcribe(wav, req.quality, req.language):
+            for item in transcribe(wav, req.quality, req.language, turns=turns):
                 if self._cancel[job_id].is_set():
                     raise RuntimeError("cancelled")
                 if item["type"] == "meta":

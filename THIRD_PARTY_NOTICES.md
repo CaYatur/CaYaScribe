@@ -25,5 +25,7 @@ Gyan “essentials” GPLv3 builds are **not** used.
 | Silero VAD (bundled with faster-whisper) | MIT | https://github.com/snakers4/silero-vad |
 | sherpa-onnx pyannote segmentation 3.0 | MIT (pyannote.audio model card) | k2-fsa GitHub releases |
 | NeMo TitaNet-small speaker embedding ONNX | CC-BY-4.0 | k2-fsa GitHub releases |
+| Qwen3-ASR 0.6B INT8 (sherpa-onnx) | Apache-2.0 | k2-fsa GitHub releases / QwenLM |
+| Qwen3-ASR 1.7B INT8 (sherpa-onnx) | Apache-2.0 | Hugging Face `thieunv/sherpa-onnx-qwen3-asr-1.7B-int8` / QwenLM |
 
-Qwen3-ASR (Apache-2.0), Parakeet TDT v3 (CC-BY-4.0), pyannote community-1 (CC-BY-4.0, gated), and CUDA extras are optional later downloads and are not part of the first-run set.
+Parakeet TDT v3 (CC-BY-4.0) is EU-only and is not used for Turkish. CUDA extras remain optional.
