@@ -1,4 +1,4 @@
-export type SidecarInfo = { port: number; token: string };
+export type SidecarInfo = { port: number; token: string; error?: string | null };
 
 let info: SidecarInfo = { port: 8765, token: "dev-token" };
 

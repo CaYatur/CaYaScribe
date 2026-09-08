@@ -14,12 +14,13 @@ Default docs language is English. Turkish: [README.tr.md](../README.tr.md).
 3. Tag and push:
 
 ```powershell
-git tag v0.1.1
-git push origin v0.1.1
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 The [release workflow](../.github/workflows/release.yml) runs on `v*` tags:
 
+- Builds an embeddable CPython sidecar (`scripts/prepare_runtime.py`)
 - Builds the Windows NSIS installer (`CaYaScribe_x.y.z_x64-setup.exe`)
 - Creates a **published** GitHub Release (not a draft or pre-release; marked Latest)
 - English notes; Turkish blurb in the body
@@ -27,4 +28,4 @@ The [release workflow](../.github/workflows/release.yml) runs on `v*` tags:
 
 Unsigned builds will show a SmartScreen warning. Code signing is a later step.
 
-v0.1 installers ship the UI. Transcription still needs the Python sidecar from a development checkout until the embeddable CPython runtime is bundled.
+The installer includes the local Python engine. Models are still downloaded after you consent.

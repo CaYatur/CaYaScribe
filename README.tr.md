@@ -21,7 +21,7 @@ Windows kurucuları [GitHub Releases](https://github.com/CaYatur/CaYaScribe/rele
 
 - `vX.Y.Z` etiketi basınca NSIS (`.exe`) üretilir ve sürüme eklenir
 - Modeller kurucunun içinde **yoktur**; onayınızdan sonra indirilir
-- v0.1 transkripsiyon için hâlâ Python sidecar bekler (geliştirme kurulumuna bakın)
+- Kurucu yerel Python motorunu içerir; modeller onayınızdan sonra iner
 
 Ayrıntı: [docs/releasing.md](docs/releasing.md) (İngilizce).
 

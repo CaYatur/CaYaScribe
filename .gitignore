@@ -1,6 +1,8 @@
 # Models, caches, runtime
 assets/cache/
 sidecar/python/.venv/
+sidecar/runtime/*
+!sidecar/runtime/.gitkeep
 sidecar/python/**/__pycache__/
 sidecar/python/*.egg-info/
 *.egg-info/

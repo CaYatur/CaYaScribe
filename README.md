@@ -21,7 +21,7 @@ Windows installers are published on [GitHub Releases](https://github.com/CaYatur
 
 - Push a tag `vX.Y.Z` to build NSIS (`.exe`) and attach it to the release
 - Models are **not** inside the installer; the app downloads them after you consent
-- v0.1 still expects the Python sidecar for transcription (see development setup)
+- The installer includes the local Python engine; models download after you consent
 
 See [docs/releasing.md](docs/releasing.md).
 

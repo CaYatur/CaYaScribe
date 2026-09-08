@@ -32,6 +32,7 @@ export const tr: Messages = {
   settings: "Modeller",
   connected: "Yerel sidecar bağlı",
   disconnected: "Sidecar bekleniyor…",
+  sidecarFailed: "Yerel motor başlayamadı. Kurulu uygulamaysa GitHub Releases’ten yeniden kur.",
   pickFile: "Bir dosya seçin.",
   missingForQuality: "Bu kalite için modeli önce Modeller’den indirin.",
   qualityLocked: "İndirilmedi",

@@ -171,12 +171,16 @@ export default function App() {
     let cancelled = false;
     (async () => {
       try {
-        const info = await invoke<{ port: number; token: string }>("sidecar_info");
+        const info = await invoke<{ port: number; token: string; error?: string | null }>("sidecar_info");
         setSidecar(info);
+        if (info.error) {
+          if (!cancelled) setErr(`${t.sidecarFailed} ${info.error}`);
+          return;
+        }
       } catch {
         setSidecar({ port: 8765, token: "dev-token" });
       }
-      for (let i = 0; i < 40 && !cancelled; i++) {
+      for (let i = 0; i < 80 && !cancelled; i++) {
         try {
           await api.health();
           if (!cancelled) {
@@ -188,6 +192,7 @@ export default function App() {
           await new Promise((r) => setTimeout(r, 250));
         }
       }
+      if (!cancelled) setErr(t.sidecarFailed);
     })();
     return () => {
       cancelled = true;
@@ -680,7 +685,7 @@ export default function App() {
       </div>
 
       <footer className="status">
-        <span>v0.1.1 · MIT · {t.footerModels}</span>
+        <span>v0.1.2 · MIT · {t.footerModels}</span>
         <span>{formatBytes(diskTotal)} {t.onDisk} · {assets.filter((a) => a.present).length}/{assets.length} {t.footerAssets}</span>
       </footer>
 

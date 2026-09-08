@@ -12,6 +12,7 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
@@ -20,6 +21,18 @@ jobs:
           node-version: "22"
 
       - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/AppData/Local/pip/Cache
+          key: ${{ runner.os }}-embed-pip-${{ hashFiles('sidecar/python/pyproject.toml') }}
+
+      - name: Prepare embedded Python sidecar
+        run: python scripts/prepare_runtime.py
 
       - name: Install frontend dependencies
         working-directory: apps/desktop
@@ -39,12 +52,11 @@ jobs:
             **English (default)** · Turkish: see README.tr.md
 
             - Download the NSIS installer from Assets
+            - Installer includes the local Python engine
             - On first launch the app asks before downloading models (not bundled)
             - UI: English or Turkish (unsupported OS languages fall back to English)
 
             Yerel konuşmacı etiketli transkripsiyon. Ses bu bilgisayardan çıkmaz. Kurucuyu Assets’ten indirin; modeller onayınızdan sonra iner.
-
-            The Python sidecar is still required for transcription until the embedded runtime ships.
           releaseDraft: false
           prerelease: false
           args: --bundles nsis

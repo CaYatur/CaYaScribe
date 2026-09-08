@@ -7,6 +7,7 @@ use tauri::Manager;
 struct SidecarInfo {
     port: u16,
     token: String,
+    error: Option<String>,
 }
 
 #[tauri::command]
@@ -34,11 +35,16 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            match Sidecar::spawn() {
+            let resource_dir = app.path().resource_dir().ok();
+            let exe_dir = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+            match Sidecar::spawn(resource_dir, exe_dir) {
                 Ok(side) => {
                     app.manage(SidecarInfo {
                         port: side.port,
                         token: side.token.clone(),
+                        error: None,
                     });
                     app.manage(side);
                 }
@@ -47,6 +53,7 @@ pub fn run() {
                     app.manage(SidecarInfo {
                         port: 8765,
                         token: "dev-token".into(),
+                        error: Some(e),
                     });
                 }
             }

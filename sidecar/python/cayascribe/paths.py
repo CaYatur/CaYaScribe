@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 
@@ -38,6 +39,18 @@ def config_path() -> Path:
 
 
 def bundled_manifest() -> Path:
+    env = os.environ.get("CAYA_MANIFEST")
+    if env:
+        p = Path(env)
+        if p.is_file():
+            return p
     here = Path(__file__).resolve()
-    # sidecar/python/cayascribe/paths.py → repo assets/manifest.json
-    return here.parents[3] / "assets" / "manifest.json"
+    exe_dir = Path(sys.executable).resolve().parent
+    candidates: list[Path] = [exe_dir / "assets" / "manifest.json"]
+    for idx in (3, 1):
+        if len(here.parents) > idx:
+            candidates.append(here.parents[idx] / "assets" / "manifest.json")
+    for path in candidates:
+        if path.is_file():
+            return path
+    return candidates[0]

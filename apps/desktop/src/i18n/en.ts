@@ -30,6 +30,7 @@ export const en = {
   settings: "Models",
   connected: "Local sidecar connected",
   disconnected: "Waiting for sidecar…",
+  sidecarFailed: "Local engine could not start. Reinstall from GitHub Releases if this is the installed app.",
   pickFile: "Choose a file.",
   missingForQuality: "Download the model for this quality first (Models).",
   qualityLocked: "Not downloaded",
