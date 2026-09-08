@@ -1,7 +1,8 @@
-# Tauri + React + Typescript
+# CaYaScribe desktop (Tauri)
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+See the repository [README](../../README.md) (English default) and [README.tr.md](../../README.tr.md).
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+```powershell
+npm install
+npm run tauri dev
+```

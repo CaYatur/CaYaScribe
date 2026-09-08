@@ -1,4 +1,12 @@
-from cayascribe.asr.router import parakeet_allowed, select_engine
+from cayascribe.asr.router import parakeet_allowed, resolve_asr_language, select_engine
+
+
+def test_unsupported_language_falls_back_to_english():
+    assert resolve_asr_language("auto") is None
+    assert resolve_asr_language("tr") == "tr"
+    assert resolve_asr_language("en") == "en"
+    assert resolve_asr_language("xx") == "en"
+    assert resolve_asr_language("klingon") == "en"
 
 
 def test_parakeet_never_for_turkish():

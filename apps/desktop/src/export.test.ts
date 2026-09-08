@@ -1,4 +1,12 @@
+import { localeFromNavigator } from "./i18n";
 import { exportSrt, exportTxt, type Segment, type Speaker } from "./lib/export";
+
+if (localeFromNavigator("tr") !== "tr") throw new Error("tr locale");
+if (localeFromNavigator("tr-TR") !== "tr") throw new Error("tr-TR locale");
+if (localeFromNavigator("en-US") !== "en") throw new Error("en locale");
+if (localeFromNavigator("de-DE") !== "en") throw new Error("unsupported UI lang must be en");
+if (localeFromNavigator("ja") !== "en") throw new Error("unsupported UI lang must be en");
+
 
 const speakers: Speaker[] = [
   { id: "A", name: "Ali" },

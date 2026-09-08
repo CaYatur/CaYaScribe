@@ -38,6 +38,16 @@ button { cursor: pointer; }
 .brand span { color: var(--muted); font-size: 12px; }
 .top-actions { display: flex; gap: 8px; align-items: center; }
 .lang { background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 
 .banner {
   margin: 12px 20px 0;

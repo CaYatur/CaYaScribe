@@ -20,7 +20,7 @@
     {
       "id": "whisper-small-ct2",
       "kind": "asr",
-      "displayName": "Whisper small (Hızlı)",
+      "displayName": "Whisper small (Fast)",
       "qualityTiers": ["fast"],
       "required": false,
       "license": "MIT",
@@ -34,7 +34,7 @@
     {
       "id": "whisper-turbo-ct2",
       "kind": "asr",
-      "displayName": "Whisper large-v3-turbo (Dengeli)",
+      "displayName": "Whisper large-v3-turbo (Balanced)",
       "qualityTiers": ["balanced", "high"],
       "required": true,
       "license": "MIT",
@@ -48,7 +48,7 @@
     {
       "id": "whisper-large-v3-ct2",
       "kind": "asr",
-      "displayName": "Whisper large-v3 (Maksimum)",
+      "displayName": "Whisper large-v3 (Maximum)",
       "qualityTiers": ["max"],
       "required": false,
       "license": "MIT",
@@ -62,7 +62,7 @@
     {
       "id": "pyannote-seg-3",
       "kind": "diarization",
-      "displayName": "Konuşmacı bölümleme (pyannote 3 ONNX)",
+      "displayName": "Speaker segmentation (pyannote 3 ONNX)",
       "qualityTiers": ["fast", "balanced", "high", "max"],
       "required": false,
       "license": "MIT",
@@ -78,7 +78,7 @@
     {
       "id": "titanet-small",
       "kind": "diarization",
-      "displayName": "Konuşmacı gömme (TitaNet-small ONNX)",
+      "displayName": "Speaker embedding (TitaNet-small ONNX)",
       "qualityTiers": ["fast", "balanced", "high", "max"],
       "required": false,
       "license": "CC-BY-4.0",

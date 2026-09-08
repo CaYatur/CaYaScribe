@@ -5,39 +5,15 @@ import { api, setSidecar, sidecar, type AssetRow, type JobBody } from "./lib/api
 import { streamEvents } from "./lib/sse";
 import { exportJson, exportSrt, exportTxt, exportVtt, type Segment, type Speaker } from "./lib/export";
 import { formatBytes, formatClock } from "./lib/format";
+import {
+  assetLabel,
+  detectLocale,
+  messages,
+  persistLocale,
+  stageLabel,
+  type Locale,
+} from "./i18n";
 import "./App.css";
-
-const tr = {
-  subtitle: "Yerel konuşmacı etiketli transkripsiyon — ses çıkmaz",
-  missingTitle: "Eksik dosyalar var. Şimdi indir?",
-  missingBody: "İndirme yalnızca siz onaylarsanız başlar. Hiçbir ses buluta gitmez.",
-  download: "Seçilenleri indir",
-  later: "Sonra",
-  file: "Dosya (mp3, mp4, wav…)",
-  browse: "Seç",
-  speakers: "Konuşmacı sayısı",
-  speakersHint: "Boş bırakırsanız kişi sayısı otomatik bulunur. 1 yazarsanız tek kişi varsayılır.",
-  language: "Dil",
-  quality: "Kalite",
-  enhance: "Gürültü temizleme",
-  start: "Başlat",
-  cancel: "İptal",
-  rename: "Konuşmacıyı adlandır",
-  export: "Dışa aktar",
-  timestamps: "Zaman damgası",
-  labels: "Konuşmacı etiketleri",
-  empty: "Bir ses veya video seçin, kaliteyi ayarlayın, başlatın.",
-  settings: "Modeller",
-  connected: "Yerel sidecar bağlı",
-  disconnected: "Sidecar bekleniyor…",
-};
-
-const QUALITY: { id: JobBody["quality"]; label: string }[] = [
-  { id: "fast", label: "Hızlı — Whisper small" },
-  { id: "balanced", label: "Dengeli — Whisper turbo" },
-  { id: "high", label: "Yüksek — turbo / Qwen (indirilirse)" },
-  { id: "max", label: "Maksimum — Whisper large-v3" },
-];
 
 type JobState = {
   stage: string;
@@ -46,6 +22,8 @@ type JobState = {
 };
 
 export default function App() {
+  const [locale, setLocale] = useState<Locale>(() => detectLocale());
+  const t = messages(locale);
   const [ready, setReady] = useState(false);
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [showMissing, setShowMissing] = useState(false);
@@ -68,12 +46,29 @@ export default function App() {
   const [err, setErr] = useState<string | null>(null);
   const [showModels, setShowModels] = useState(false);
 
+  function changeLocale(next: Locale) {
+    setLocale(next);
+    persistLocale(next);
+    document.documentElement.lang = next;
+  }
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   const missing = useMemo(() => assets.filter((a) => !a.present), [assets]);
   const missingForQuality = useMemo(() => {
     return missing.filter(
       (a) => a.required || a.qualityTiers.includes(quality) || a.kind === "ffmpeg",
     );
   }, [missing, quality]);
+
+  const qualityOptions: { id: JobBody["quality"]; label: string }[] = [
+    { id: "fast", label: t.qualityFast },
+    { id: "balanced", label: t.qualityBalanced },
+    { id: "high", label: t.qualityHigh },
+    { id: "max", label: t.qualityMax },
+  ];
 
   const refreshAssets = useCallback(async () => {
     const data = await api.assets();
@@ -119,7 +114,7 @@ export default function App() {
     try {
       const selected = await open({
         multiple: false,
-        filters: [{ name: "Medya", extensions: ["mp3", "mp4", "wav", "m4a", "mkv", "webm", "flac", "ogg", "aac"] }],
+        filters: [{ name: t.mediaFilter, extensions: ["mp3", "mp4", "wav", "m4a", "mkv", "webm", "flac", "ogg", "aac"] }],
       });
       if (typeof selected === "string") setMediaPath(selected);
     } catch {
@@ -148,7 +143,7 @@ export default function App() {
   async function startJob() {
     setErr(null);
     if (!mediaPath) {
-      setErr("Bir dosya seçin.");
+      setErr(t.pickFile);
       return;
     }
     const n = speakerCount.trim() === "" ? null : Number(speakerCount);
@@ -164,7 +159,7 @@ export default function App() {
       setJobId(id);
       setSegments([]);
       setSpeakers([]);
-      setJob({ stage: "başlıyor", pct: 1 });
+      setJob({ stage: "starting", pct: 1 });
       await streamEvents(api.jobUrl(id), sidecar().token, (event, data) => {
         const d = data as Record<string, unknown>;
         if (event === "progress") {
@@ -173,11 +168,11 @@ export default function App() {
         if (event === "done") {
           setSegments((d.segments as Segment[]) || []);
           setSpeakers((d.speakers as Speaker[]) || []);
-          setJob({ stage: "bitti", pct: 100 });
+          setJob({ stage: "done", pct: 100 });
         }
         if (event === "error") {
-          setJob({ stage: "hata", pct: 0, error: String(d.error ?? "hata") });
-          setErr(String(d.error ?? "hata"));
+          setJob({ stage: "error", pct: 0, error: String(d.error ?? "error") });
+          setErr(String(d.error ?? "error"));
         }
       });
     } catch (e) {
@@ -205,25 +200,37 @@ export default function App() {
   }
 
   const opts = { timestamps: wantTs, speakers: wantSpk };
+  const jobBusy = job !== null && job.stage !== "done" && job.stage !== "error";
 
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand">
           <h1>CaYaScribe</h1>
-          <span>{tr.subtitle}</span>
+          <span>{t.subtitle}</span>
         </div>
         <div className="top-actions">
-          <span className="offline">{ready ? tr.connected : tr.disconnected}</span>
-          <button className="btn ghost" onClick={() => setShowModels(true)}>{tr.settings}</button>
+          <span className="offline">{ready ? t.connected : t.disconnected}</span>
+          <label className="sr-only" htmlFor="ui-lang">{t.uiLanguage}</label>
+          <select
+            id="ui-lang"
+            className="lang"
+            value={locale}
+            onChange={(e) => changeLocale(e.target.value === "tr" ? "tr" : "en")}
+            title={t.uiLanguage}
+          >
+            <option value="en">English</option>
+            <option value="tr">Türkçe</option>
+          </select>
+          <button className="btn ghost" onClick={() => setShowModels(true)}>{t.settings}</button>
         </div>
       </header>
 
       {showMissing && missing.length > 0 && (
         <div className="banner">
           <div>
-            <h3>{tr.missingTitle}</h3>
-            <p>{tr.missingBody}</p>
+            <h3>{t.missingTitle}</h3>
+            <p>{t.missingBody}</p>
             <ul>
               {missing.map((a) => (
                 <li key={a.id}>
@@ -233,7 +240,7 @@ export default function App() {
                     onChange={(e) => setPicked((p) => ({ ...p, [a.id]: e.target.checked }))}
                   />
                   <span>
-                    {a.displayName} · {formatBytes(a.sizeBytes)} · {a.license}
+                    {assetLabel(locale, a.id, a.displayName)} · {formatBytes(a.sizeBytes)} · {a.license}
                     {a.present ? " ✓" : ""}
                   </span>
                 </li>
@@ -249,8 +256,8 @@ export default function App() {
             )}
           </div>
           <div className="row">
-            <button className="btn" onClick={() => setShowMissing(false)}>{tr.later}</button>
-            <button className="btn primary" onClick={startDownload}>{tr.download}</button>
+            <button className="btn" onClick={() => setShowMissing(false)}>{t.later}</button>
+            <button className="btn primary" onClick={startDownload}>{t.download}</button>
           </div>
         </div>
       )}
@@ -258,10 +265,10 @@ export default function App() {
       <div className="layout">
         <aside className="panel">
           <label className="field">
-            {tr.file}
+            {t.file}
             <div className="file-row">
-              <input value={mediaPath} onChange={(e) => setMediaPath(e.target.value)} placeholder="C:\\…\\kayit.mp4" />
-              <button className="btn" onClick={pickFile}>{tr.browse}</button>
+              <input value={mediaPath} onChange={(e) => setMediaPath(e.target.value)} placeholder={t.filePlaceholder} />
+              <button className="btn" onClick={pickFile}>{t.browse}</button>
             </div>
           </label>
           <input
@@ -275,20 +282,20 @@ export default function App() {
             }}
           />
           <label className="field">
-            {tr.speakers}
+            {t.speakers}
             <input
               type="number"
               min={1}
-              placeholder="Otomatik"
+              placeholder={t.speakersPlaceholder}
               value={speakerCount}
               onChange={(e) => setSpeakerCount(e.target.value)}
             />
           </label>
-          <p className="hint">{tr.speakersHint}</p>
+          <p className="hint">{t.speakersHint}</p>
           <label className="field">
-            {tr.language}
+            {t.transcriptionLanguage}
             <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-              <option value="auto">Otomatik</option>
+              <option value="auto">{t.langAuto}</option>
               <option value="tr">Türkçe</option>
               <option value="en">English</option>
               <option value="de">Deutsch</option>
@@ -301,50 +308,46 @@ export default function App() {
             </select>
           </label>
           <label className="field">
-            {tr.quality}
+            {t.quality}
             <select value={quality} onChange={(e) => setQuality(e.target.value as JobBody["quality"])}>
-              {QUALITY.map((q) => (
+              {qualityOptions.map((q) => (
                 <option key={q.id} value={q.id}>{q.label}</option>
               ))}
             </select>
           </label>
           <label className="field">
-            {tr.enhance}
+            {t.enhance}
             <select value={enhance} onChange={(e) => setEnhance(e.target.value as JobBody["enhance"])}>
-              <option value="off">Kapalı</option>
-              <option value="auto">Otomatik</option>
-              <option value="on">Açık</option>
+              <option value="off">{t.enhanceOff}</option>
+              <option value="auto">{t.enhanceAuto}</option>
+              <option value="on">{t.enhanceOn}</option>
             </select>
           </label>
           <div className="row">
-            <button
-              className="btn primary"
-              disabled={!ready || (job !== null && job.stage !== "bitti" && job.stage !== "hata")}
-              onClick={startJob}
-            >
-              {tr.start}
+            <button className="btn primary" disabled={!ready || jobBusy} onClick={startJob}>
+              {t.start}
             </button>
-            {jobId && job && job.stage !== "bitti" && (
-              <button className="btn" onClick={() => jobId && api.cancelJob(jobId)}>{tr.cancel}</button>
+            {jobId && jobBusy && (
+              <button className="btn" onClick={() => jobId && api.cancelJob(jobId)}>{t.cancel}</button>
             )}
           </div>
           {job && (
             <div className="progress">
-              {job.error ? job.error : `${job.stage} · %${job.pct}`}
+              {job.error ? job.error : `${stageLabel(locale, job.stage)} · %${job.pct}`}
               <div className="bar"><span style={{ width: `${job.pct}%` }} /></div>
             </div>
           )}
           {err && <p className="error">{err}</p>}
           {missingForQuality.length > 0 && (
-            <p className="hint">Bu kalite için eksik modeller var — üstten indirin.</p>
+            <p className="hint">{t.missingForQuality}</p>
           )}
         </aside>
 
         <main className="editor">
           {segments.length === 0 ? (
             <div className="empty">
-              <h2>Hazır</h2>
-              <p>{tr.empty}</p>
+              <h2>{t.emptyTitle}</h2>
+              <p>{t.empty}</p>
             </div>
           ) : (
             <>
@@ -361,7 +364,7 @@ export default function App() {
                     {s.id} → {s.name}
                   </button>
                 ))}
-                <button className="btn primary" onClick={() => setExportOpen(true)}>{tr.export}</button>
+                <button className="btn primary" onClick={() => setExportOpen(true)}>{t.export}</button>
               </div>
               {segments.map((s) => (
                 <div className="segment" key={s.id}>
@@ -393,19 +396,19 @@ export default function App() {
       </div>
 
       <footer className="status">
-        <span>v0.1.0 · MIT · modeller git’te yok</span>
-        <span>{assets.filter((a) => a.present).length}/{assets.length} varlık yerelde</span>
+        <span>v0.1.0 · MIT · {t.footerModels}</span>
+        <span>{assets.filter((a) => a.present).length}/{assets.length} {t.footerAssets}</span>
       </footer>
 
       {renameId && (
         <div className="modal-back" onClick={() => setRenameId(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{tr.rename} ({renameId})</h3>
-            <p className="hint">Tüm satırlar bu isme güncellenir.</p>
+            <h3>{t.rename} ({renameId})</h3>
+            <p className="hint">{t.renameHint}</p>
             <input value={renameVal} onChange={(e) => setRenameVal(e.target.value)} autoFocus />
             <div className="actions">
-              <button className="btn" onClick={() => setRenameId(null)}>Vazgeç</button>
-              <button className="btn primary" onClick={applyRename}>Kaydet</button>
+              <button className="btn" onClick={() => setRenameId(null)}>{t.dismiss}</button>
+              <button className="btn primary" onClick={applyRename}>{t.save}</button>
             </div>
           </div>
         </div>
@@ -414,14 +417,14 @@ export default function App() {
       {exportOpen && (
         <div className="modal-back" onClick={() => setExportOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{tr.export}</h3>
+            <h3>{t.export}</h3>
             <label className="check">
               <input type="checkbox" checked={wantTs} onChange={(e) => setWantTs(e.target.checked)} />
-              {tr.timestamps}
+              {t.timestamps}
             </label>
             <label className="check">
               <input type="checkbox" checked={wantSpk} onChange={(e) => setWantSpk(e.target.checked)} />
-              {tr.labels}
+              {t.labels}
             </label>
             <div className="actions">
               <button className="btn" onClick={() => downloadBlob("transcript.txt", exportTxt(segments, speakers, opts))}>TXT</button>
@@ -436,7 +439,7 @@ export default function App() {
       {showModels && (
         <div className="modal-back" onClick={() => setShowModels(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Modeller</h3>
+            <h3>{t.settings}</h3>
             <ul>
               {assets.map((a) => (
                 <li key={a.id}>
@@ -447,14 +450,14 @@ export default function App() {
                       checked={a.present || !!picked[a.id]}
                       onChange={(e) => setPicked((p) => ({ ...p, [a.id]: e.target.checked }))}
                     />
-                    {a.displayName} — {a.present ? "indirildi" : formatBytes(a.sizeBytes)}
+                    {assetLabel(locale, a.id, a.displayName)} — {a.present ? t.downloaded : formatBytes(a.sizeBytes)}
                   </label>
                 </li>
               ))}
             </ul>
             <div className="actions">
-              <button className="btn" onClick={() => setShowModels(false)}>Kapat</button>
-              <button className="btn primary" onClick={startDownload}>{tr.download}</button>
+              <button className="btn" onClick={() => setShowModels(false)}>{t.close}</button>
+              <button className="btn primary" onClick={startDownload}>{t.download}</button>
             </div>
           </div>
         </div>

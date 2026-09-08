@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from cayascribe.asr.router import resolve_asr_language
 from cayascribe.assets.manifest import whisper_dir_for_quality
 
 
@@ -35,7 +36,7 @@ def transcribe(
         compute_type=compute,
         local_files_only=True,
     )
-    lang = None if language in ("auto", "", "detect") else language
+    lang = resolve_asr_language(language)
     segments, info = model.transcribe(
         str(wav),
         language=lang,

@@ -2,6 +2,9 @@
 
 Loopback FastAPI process. Audio never leaves the machine.
 
+Docs: repository [README](../../README.md) (English) · [README.tr.md](../../README.tr.md).
+
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\pip install -e ".[dev]"

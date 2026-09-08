@@ -1,56 +1,68 @@
 # CaYaScribe
 
-Yerel, çevrimdışı konuşmacı etiketli transkripsiyon. Ses ve video **bilgisayarınızdan çıkmaz**.
+Local, offline speaker-aware transcription for Windows. Audio and video **never leave your machine**.
 
-Local, offline speaker-aware transcription. Audio and video **never leave your machine**.
+**Languages:** [English](README.md) (default) · [Türkçe](README.tr.md)
 
-## Ne yapar / What it does
+The **app UI** is English or Turkish. The OS/browser language is used on first launch; anything other than Turkish falls back to **English**. You can switch in the title bar. Transcription itself covers 99+ languages (Whisper); an unknown language code is treated as English.
 
-- MP3, MP4 ve diğer medya dosyalarından ses çıkarır (LGPL FFmpeg)
-- 99+ dilde transkripsiyon (Whisper; Türkçe ve İngilizce birinci sınıf)
-- İsteğe bağlı konuşmacı ayrımı: sayı girilmezse otomatik, `1` ise tek kişi
-- Konuşmacılar A, B, C… — tek seferde yeniden adlandırılır
-- TXT / SRT / VTT / JSON dışa aktarma; zaman damgası isteğe bağlı
-- İlk açılışta eksik modelleri **sorarak** indirir; sonra da Ayarlar’dan indirilebilir
+## What it does
 
-## Hızlı başlangıç (geliştirme)
+- Extracts audio from MP3, MP4 and other media (LGPL FFmpeg)
+- Transcribes in 99+ languages (Whisper; Turkish and English are first-class)
+- Optional speaker diarization: empty count = auto-detect, `1` = single speaker
+- Speakers labeled A, B, C… — rename globally in one action
+- Export TXT / SRT / VTT / JSON; timestamps are optional
+- On first launch, **asks** before downloading missing models; you can also download later from Models
 
-Gerekenler: Windows 10+, Python 3.12+, Node 20+, Rust (Tauri).
+## Releases
+
+Windows installers are published on [GitHub Releases](https://github.com/CaYatur/CaYaScribe/releases).
+
+- Push a tag `vX.Y.Z` to build NSIS (`.exe`) and attach it to the release
+- Models are **not** inside the installer; the app downloads them after you consent
+- v0.1 still expects the Python sidecar for transcription (see development setup)
+
+See [docs/releasing.md](docs/releasing.md).
+
+## Development setup
+
+Requires: Windows 10+, Python 3.12+, Node 20+, Rust (Tauri).
 
 ```powershell
-# 1) Sidecar sanal ortamı
+# 1) Sidecar venv
 cd sidecar/python
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -U pip
 .\.venv\Scripts\pip install -e ".[dev]"
 
-# 2) Masaüstü
+# 2) Desktop
 cd ..\..\apps\desktop
 npm install
 npm run tauri dev
 ```
 
-İlk çalıştırmada uygulama **Dengeli** profil için FFmpeg + Whisper turbo + konuşmacı modellerini indirmek ister (~2 GB). İsterseniz sadece **Hızlı** (small) işaretleyip daha küçük bir indirmeyle deneyebilirsiniz.
+On first run the app offers the **Balanced** profile (FFmpeg + Whisper turbo + speaker models, ~2 GB). You can uncheck those and enable **Fast** (small) for a smaller download.
 
-## Kalite profilleri
+## Quality profiles
 
-| Profil | Motor (v0.1) |
+| Profile | Engine (v0.1) |
 | --- | --- |
-| Hızlı | Whisper `small` |
-| Dengeli (varsayılan) | Whisper `large-v3-turbo` |
-| Yüksek | Turbo; Qwen3-ASR sonra eklenecek |
-| Maksimum | Whisper `large-v3` |
+| Fast | Whisper `small` |
+| Balanced (default) | Whisper `large-v3-turbo` |
+| High | Turbo; Qwen3-ASR later |
+| Maximum | Whisper `large-v3` |
 
-Konuşmacı ayrımı dil bağımsızdır (sherpa-onnx + TitaNet). Hugging Face jetonu gerekmez.
+Speaker diarization is language-independent (sherpa-onnx + TitaNet). No Hugging Face token is required for the default path.
 
-## Gizlilik
+## Privacy
 
-- STT buluta gitmez
-- İndirmeler yalnızca siz onayladıktan sonra Hugging Face / GitHub’dan gelir
-- Telemetri yok
+- Speech-to-text never goes to the cloud
+- Downloads happen only after you confirm, from Hugging Face / GitHub
+- No telemetry
 
-Tasarım belgesi: [`docs/design.md`](docs/design.md)
+Architecture: [`docs/design.md`](docs/design.md)
 
-## Lisans
+## License
 
-Uygulama kodu: [MIT](LICENSE). Üçüncü taraf: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+App code: [MIT](LICENSE). Third-party: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)

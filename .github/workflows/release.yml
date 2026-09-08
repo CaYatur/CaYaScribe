@@ -1,0 +1,50 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        working-directory: apps/desktop
+        run: npm install
+
+      - name: Build Windows installer
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: "CaYaScribe ${{ github.ref_name }}"
+          releaseBody: |
+            Local speaker-aware transcription for Windows. Audio never leaves the machine.
+
+            **English (default)** · Turkish: see README.tr.md
+
+            - Download the NSIS installer from Assets
+            - On first launch the app asks before downloading models (not bundled)
+            - UI: English or Turkish (unsupported OS languages fall back to English)
+
+            Yerel konuşmacı etiketli transkripsiyon. Ses bu bilgisayardan çıkmaz. Kurucuyu Assets’ten indirin; modeller onayınızdan sonra iner.
+
+            v0.1: the Python sidecar is still required for transcription until the embedded runtime ships.
+          releaseDraft: false
+          prerelease: true
+          args: --bundles nsis
