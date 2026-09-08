@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { api, setSidecar, sidecar, type AssetRow, type JobBody } from "./lib/api";
 import { streamEvents } from "./lib/sse";
@@ -210,13 +210,34 @@ export default function App() {
     return speakers.find((s) => s.id === id)?.name ?? id;
   }
 
-  function downloadBlob(name: string, text: string) {
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(a.href);
+  function transcriptStem(): string {
+    const raw = mediaPath.split(/[/\\]/).pop() || "transcript";
+    const stem = raw.replace(/\.[^.]+$/, "");
+    return stem || "transcript";
+  }
+
+  async function exportAs(kind: "txt" | "srt" | "vtt" | "json") {
+    const text =
+      kind === "txt"
+        ? exportTxt(segments, speakers, opts)
+        : kind === "srt"
+          ? exportSrt(segments, speakers, opts)
+          : kind === "vtt"
+            ? exportVtt(segments, speakers, opts)
+            : exportJson(segments, speakers);
+    const name = `${transcriptStem()}.${kind}`;
+    try {
+      const path = await save({
+        defaultPath: name,
+        filters: [{ name: kind.toUpperCase(), extensions: [kind] }],
+      });
+      if (!path) return;
+      await invoke("save_text_file", { path, contents: text });
+      setExportOpen(false);
+      setErr(null);
+    } catch (e) {
+      setErr(String(e));
+    }
   }
 
   const opts = { timestamps: wantTs, speakers: wantSpk };
@@ -336,7 +357,7 @@ export default function App() {
           </div>
         </aside>
 
-        <main className={`editor${jobBusy ? " is-working" : ""}`}>
+        <main className={`editor${jobBusy ? " is-working" : segments.length === 0 ? " is-idle" : ""}`}>
           {segments.length > 0 ? (
             <>
               <div className="row" style={{ marginBottom: 12 }}>
@@ -402,7 +423,42 @@ export default function App() {
               <p className="working-pct">%{job.pct}</p>
             </div>
           ) : (
-            <div className="empty">
+            <div className="empty idle">
+              <div className="idle-scene" aria-hidden="true">
+                <div className="idle-mic">
+                  <div className="idle-rings">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <svg className="idle-mic-icon" viewBox="0 0 48 48">
+                    <rect x="18" y="8" width="12" height="20" rx="6" fill="#f8fafc" />
+                    <path d="M14 24a10 10 0 0 0 20 0" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" />
+                    <path d="M24 34v6M17 40h14" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="idle-stream">
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                </div>
+                <div className="idle-col">
+                  <div className="idle-page">
+                    <div className="idle-lines">
+                      <i />
+                      <i />
+                      <i />
+                    </div>
+                    <span className="idle-pen" />
+                    <p className="idle-type">{t.idleType}</p>
+                  </div>
+                  <div className="idle-words">
+                    <span>{t.idleSpeak}</span>
+                    <span>{t.idleWrite}</span>
+                  </div>
+                </div>
+              </div>
               <h2>{t.emptyTitle}</h2>
               <p>{t.empty}</p>
             </div>
@@ -433,6 +489,7 @@ export default function App() {
         <div className="modal-back" onClick={() => setExportOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>{t.export}</h3>
+            <p className="hint">{t.exportHint}</p>
             <label className="check">
               <input type="checkbox" checked={wantTs} onChange={(e) => setWantTs(e.target.checked)} />
               {t.timestamps}
@@ -442,10 +499,10 @@ export default function App() {
               {t.labels}
             </label>
             <div className="actions">
-              <button className="btn" onClick={() => downloadBlob("transcript.txt", exportTxt(segments, speakers, opts))}>TXT</button>
-              <button className="btn" onClick={() => downloadBlob("transcript.srt", exportSrt(segments, speakers, opts))}>SRT</button>
-              <button className="btn" onClick={() => downloadBlob("transcript.vtt", exportVtt(segments, speakers, opts))}>VTT</button>
-              <button className="btn" onClick={() => downloadBlob("transcript.json", exportJson(segments, speakers))}>JSON</button>
+              <button className="btn" onClick={() => void exportAs("txt")}>TXT</button>
+              <button className="btn" onClick={() => void exportAs("srt")}>SRT</button>
+              <button className="btn" onClick={() => void exportAs("vtt")}>VTT</button>
+              <button className="btn" onClick={() => void exportAs("json")}>JSON</button>
             </div>
           </div>
         </div>
