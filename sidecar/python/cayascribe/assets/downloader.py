@@ -97,6 +97,7 @@ class DownloadManager:
         if record.hfRepo:
             try:
                 self._hf(record, on_event)
+                self._assert_complete(record)
                 return
             except Exception as exc:
                 errors.append(f"huggingface:{record.hfRepo}: {exc}")
@@ -106,6 +107,7 @@ class DownloadManager:
                     self._archive(record, url, on_event)
                 else:
                     self._file(record, url, on_event)
+                self._assert_complete(record)
                 return
             except (HTTPError, URLError, OSError, RuntimeError) as exc:
                 errors.append(f"{url}: {exc}")
@@ -139,21 +141,30 @@ class DownloadManager:
 
         t = threading.Thread(target=poll, daemon=True)
         t.start()
+        self._clear_stale_locks(target)
         try:
             snapshot_download(
                 repo_id=record.hfRepo,
                 local_dir=str(target),
-                resume_download=True,
+                etag_timeout=60,
             )
         except TypeError:
             snapshot_download(repo_id=record.hfRepo, local_dir=str(target))
         finally:
             stop.set()
-        if on_event:
-            on_event(
-                "asset_progress",
-                {"id": record.id, "bytes": record.sizeBytes, "total": record.sizeBytes},
-            )
+
+    def _clear_stale_locks(self, target: Path) -> None:
+        if not target.exists():
+            return
+        for lock in target.rglob("*.lock"):
+            try:
+                lock.unlink()
+            except OSError:
+                pass
+
+    def _assert_complete(self, record: AssetRecord) -> None:
+        if not record.present():
+            raise RuntimeError(f"download_incomplete:{record.id}: model.bin missing")
 
     def _file(self, record: AssetRecord, url: str, on_event) -> None:
         dest = assets_root() / record.relativePath

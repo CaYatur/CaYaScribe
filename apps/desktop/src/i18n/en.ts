@@ -21,6 +21,7 @@ export const en = {
   labels: "Speaker labels",
   emptyTitle: "Ready",
   empty: "Pick an audio or video file, set quality, then start.",
+  workingBody: "Hang tight until this finishes. Audio never leaves this PC.",
   settings: "Models",
   connected: "Local sidecar connected",
   disconnected: "Waiting for sidecar…",

@@ -23,6 +23,7 @@ export const tr: Messages = {
   labels: "Konuşmacı etiketleri",
   emptyTitle: "Hazır",
   empty: "Bir ses veya video seçin, kaliteyi ayarlayın, başlatın.",
+  workingBody: "İşlem bitene kadar bekleyin. Ses bu bilgisayardan çıkmaz.",
   settings: "Modeller",
   connected: "Yerel sidecar bağlı",
   disconnected: "Sidecar bekleniyor…",

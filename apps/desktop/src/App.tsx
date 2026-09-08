@@ -325,13 +325,8 @@ export default function App() {
           </div>
         </aside>
 
-        <main className="editor">
-          {segments.length === 0 ? (
-            <div className="empty">
-              <h2>{t.emptyTitle}</h2>
-              <p>{t.empty}</p>
-            </div>
-          ) : (
+        <main className={`editor${jobBusy ? " is-working" : ""}`}>
+          {segments.length > 0 ? (
             <>
               <div className="row" style={{ marginBottom: 12 }}>
                 {speakers.map((s) => (
@@ -373,6 +368,33 @@ export default function App() {
                 </div>
               ))}
             </>
+          ) : jobBusy && job ? (
+            <div className="working" aria-live="polite">
+              <div className="working-visual" aria-hidden="true">
+                <div className="working-rings">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+                <div className="eq">
+                  <span /><span /><span /><span /><span /><span /><span />
+                </div>
+              </div>
+              <h2>{stageLabel(locale, job.stage)}</h2>
+              <p>{t.workingBody}</p>
+              {mediaPath && (
+                <p className="working-file">{mediaPath.split(/[/\\]/).pop()}</p>
+              )}
+              <div className="working-bar">
+                <span style={{ width: `${Math.max(4, job.pct)}%` }} />
+              </div>
+              <p className="working-pct">%{job.pct}</p>
+            </div>
+          ) : (
+            <div className="empty">
+              <h2>{t.emptyTitle}</h2>
+              <p>{t.empty}</p>
+            </div>
           )}
         </main>
       </div>
