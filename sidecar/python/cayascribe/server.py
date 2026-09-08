@@ -120,6 +120,8 @@ def create_job(req: JobCreate) -> dict[str, str]:
         job_id = RUNNER.start(req)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from exc
     return {"jobId": job_id}
 
 

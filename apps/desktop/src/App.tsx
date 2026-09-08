@@ -21,6 +21,19 @@ type JobState = {
   error?: string;
 };
 
+const ASR_FOR_QUALITY: Record<JobBody["quality"], string> = {
+  fast: "whisper-small-ct2",
+  balanced: "whisper-turbo-ct2",
+  high: "whisper-turbo-ct2",
+  max: "whisper-large-v3-ct2",
+};
+
+function qualityAvailable(list: AssetRow[], q: JobBody["quality"]): boolean {
+  const ffmpeg = list.some((a) => a.kind === "ffmpeg" && a.present);
+  const asr = list.some((a) => a.id === ASR_FOR_QUALITY[q] && a.present);
+  return ffmpeg && asr;
+}
+
 export default function App() {
   const [locale, setLocale] = useState<Locale>(() => detectLocale());
   const t = messages(locale);
@@ -42,7 +55,7 @@ export default function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [wantTs, setWantTs] = useState(true);
   const [wantSpk, setWantSpk] = useState(true);
-  const [dl, setDl] = useState<{ assetId?: string; bytes: number; total: number } | null>(null);
+  const [dl, setDl] = useState<{ assetId?: string; bytes: number; total: number; source?: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [showModels, setShowModels] = useState(false);
 
@@ -57,30 +70,28 @@ export default function App() {
   }, [locale]);
 
   const missing = useMemo(() => assets.filter((a) => !a.present), [assets]);
-  const missingForQuality = useMemo(() => {
-    return missing.filter(
-      (a) => a.required || a.qualityTiers.includes(quality) || a.kind === "ffmpeg",
-    );
-  }, [missing, quality]);
 
-  const qualityOptions: { id: JobBody["quality"]; label: string }[] = [
-    { id: "fast", label: t.qualityFast },
-    { id: "balanced", label: t.qualityBalanced },
-    { id: "high", label: t.qualityHigh },
-    { id: "max", label: t.qualityMax },
+  const qualityOptions: { id: JobBody["quality"]; label: string; ready: boolean }[] = [
+    { id: "fast", label: t.qualityFast, ready: qualityAvailable(assets, "fast") },
+    { id: "balanced", label: t.qualityBalanced, ready: qualityAvailable(assets, "balanced") },
+    { id: "high", label: t.qualityHigh, ready: qualityAvailable(assets, "high") },
+    { id: "max", label: t.qualityMax, ready: qualityAvailable(assets, "max") },
   ];
+  const canStartQuality = qualityAvailable(assets, quality);
 
   const refreshAssets = useCallback(async () => {
     const data = await api.assets();
     setAssets(data.assets);
     const next: Record<string, boolean> = {};
     for (const a of data.assets) {
-      if (!a.present && (a.required || a.id === "whisper-turbo-ct2" || a.kind === "diarization")) {
-        next[a.id] = true;
-      }
+      if (!a.present && a.recommended) next[a.id] = true;
     }
     setPicked(next);
-    if (data.assets.some((a) => !a.present && a.required)) setShowMissing(true);
+    if (data.assets.some((a) => !a.present && a.recommended)) setShowMissing(true);
+    const readyQs: JobBody["quality"][] = ["fast", "balanced", "high", "max"].filter((q) =>
+      qualityAvailable(data.assets, q as JobBody["quality"]),
+    ) as JobBody["quality"][];
+    setQuality((cur) => (qualityAvailable(data.assets, cur) ? cur : readyQs[0] ?? cur));
   }, []);
 
   useEffect(() => {
@@ -129,7 +140,12 @@ export default function App() {
     await api.download(ids);
     const timer = setInterval(async () => {
       const p = await api.assetProgress();
-      setDl({ assetId: p.assetId ?? undefined, bytes: p.bytes, total: p.total });
+      setDl({
+        assetId: p.assetId ?? undefined,
+        bytes: p.bytes,
+        total: p.total,
+        source: p.source ?? undefined,
+      });
       if (!p.active) {
         clearInterval(timer);
         setDl(null);
@@ -240,15 +256,16 @@ export default function App() {
                     onChange={(e) => setPicked((p) => ({ ...p, [a.id]: e.target.checked }))}
                   />
                   <span>
-                    {assetLabel(locale, a.id, a.displayName)} · {formatBytes(a.sizeBytes)} · {a.license}
-                    {a.present ? " ✓" : ""}
+                    {a.recommended && <em className="badge">{t.recommended}</em>}
+                    {assetLabel(locale, a.id, a.displayName)} · {formatBytes(a.sizeBytes)}
+                    <small className="src"> {a.source}</small>
                   </span>
                 </li>
               ))}
             </ul>
             {dl && (
               <div className="progress">
-                {dl.assetId} — {formatBytes(dl.bytes)} / {formatBytes(dl.total || 1)}
+                {dl.assetId} {dl.source ? `· ${dl.source}` : ""} — {formatBytes(dl.bytes)} / {formatBytes(dl.total || 1)}
                 <div className="bar">
                   <span style={{ width: `${Math.min(100, (dl.bytes / (dl.total || 1)) * 100)}%` }} />
                 </div>
@@ -266,21 +283,9 @@ export default function App() {
         <aside className="panel">
           <label className="field">
             {t.file}
-            <div className="file-row">
-              <input value={mediaPath} onChange={(e) => setMediaPath(e.target.value)} placeholder={t.filePlaceholder} />
-              <button className="btn" onClick={pickFile}>{t.browse}</button>
-            </div>
+            <button className="btn" onClick={pickFile}>{t.browse}</button>
+            <span className="file-name">{mediaPath ? mediaPath.split(/[/\\]/).pop() : t.noFile}</span>
           </label>
-          <input
-            type="file"
-            style={{ marginBottom: 12 }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f && "path" in f && typeof (f as File & { path?: string }).path === "string") {
-                setMediaPath((f as File & { path: string }).path);
-              }
-            }}
-          />
           <label className="field">
             {t.speakers}
             <input
@@ -309,9 +314,17 @@ export default function App() {
           </label>
           <label className="field">
             {t.quality}
-            <select value={quality} onChange={(e) => setQuality(e.target.value as JobBody["quality"])}>
+            <select
+              value={quality}
+              onChange={(e) => {
+                const next = e.target.value as JobBody["quality"];
+                if (qualityAvailable(assets, next)) setQuality(next);
+              }}
+            >
               {qualityOptions.map((q) => (
-                <option key={q.id} value={q.id}>{q.label}</option>
+                <option key={q.id} value={q.id} disabled={!q.ready}>
+                  {q.ready ? q.label : `${q.label} (${t.qualityLocked})`}
+                </option>
               ))}
             </select>
           </label>
@@ -324,7 +337,7 @@ export default function App() {
             </select>
           </label>
           <div className="row">
-            <button className="btn primary" disabled={!ready || jobBusy} onClick={startJob}>
+            <button className="btn primary" disabled={!ready || jobBusy || !mediaPath || !canStartQuality} onClick={startJob}>
               {t.start}
             </button>
             {jobId && jobBusy && (
@@ -338,8 +351,8 @@ export default function App() {
             </div>
           )}
           {err && <p className="error">{err}</p>}
-          {missingForQuality.length > 0 && (
-            <p className="hint">{t.missingForQuality}</p>
+          {!canStartQuality && (
+            <p className="hint">{t.startNeedsModels}</p>
           )}
         </aside>
 
@@ -438,11 +451,12 @@ export default function App() {
 
       {showModels && (
         <div className="modal-back" onClick={() => setShowModels(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
             <h3>{t.settings}</h3>
-            <ul>
+            <p className="hint">{t.missingBody}</p>
+            <ul className="model-list">
               {assets.map((a) => (
-                <li key={a.id}>
+                <li key={a.id} className="model-row">
                   <label className="check">
                     <input
                       type="checkbox"
@@ -450,11 +464,25 @@ export default function App() {
                       checked={a.present || !!picked[a.id]}
                       onChange={(e) => setPicked((p) => ({ ...p, [a.id]: e.target.checked }))}
                     />
-                    {assetLabel(locale, a.id, a.displayName)} — {a.present ? t.downloaded : formatBytes(a.sizeBytes)}
+                    <span>
+                      {a.recommended && <em className="badge">{t.recommended}</em>}
+                      {assetLabel(locale, a.id, a.displayName)}
+                      <small className="src">
+                        {t.source}: {a.source} · {a.present ? t.downloaded : formatBytes(a.sizeBytes)}
+                      </small>
+                    </span>
                   </label>
                 </li>
               ))}
             </ul>
+            {dl && (
+              <div className="progress">
+                {dl.assetId} {dl.source ? `· ${dl.source}` : ""} — {formatBytes(dl.bytes)} / {formatBytes(dl.total || 1)}
+                <div className="bar">
+                  <span style={{ width: `${Math.min(100, (dl.bytes / (dl.total || 1)) * 100)}%` }} />
+                </div>
+              </div>
+            )}
             <div className="actions">
               <button className="btn" onClick={() => setShowModels(false)}>{t.close}</button>
               <button className="btn primary" onClick={startDownload}>{t.download}</button>

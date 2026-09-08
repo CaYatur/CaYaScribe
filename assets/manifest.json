@@ -7,6 +7,7 @@
       "displayName": "FFmpeg (BtbN LGPL, decode)",
       "qualityTiers": ["fast", "balanced", "high", "max"],
       "required": true,
+      "recommended": true,
       "license": "LGPL-2.1+",
       "gated": false,
       "sizeBytes": 168900000,
@@ -14,7 +15,8 @@
       "extract": "ffmpeg",
       "relativePath": "ffmpeg/ffmpeg.exe",
       "urls": [
-        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-win64-lgpl-8.1.zip"
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-win64-lgpl-8.1.zip",
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl.zip"
       ]
     },
     {
@@ -23,6 +25,7 @@
       "displayName": "Whisper small (Fast)",
       "qualityTiers": ["fast"],
       "required": false,
+      "recommended": false,
       "license": "MIT",
       "gated": false,
       "sizeBytes": 500000000,
@@ -32,11 +35,27 @@
       "urls": []
     },
     {
+      "id": "whisper-medium-ct2",
+      "kind": "asr",
+      "displayName": "Whisper medium",
+      "qualityTiers": [],
+      "required": false,
+      "recommended": false,
+      "license": "MIT",
+      "gated": false,
+      "sizeBytes": 1500000000,
+      "sha256": null,
+      "hfRepo": "Systran/faster-whisper-medium",
+      "relativePath": "asr/whisper-medium-ct2",
+      "urls": []
+    },
+    {
       "id": "whisper-turbo-ct2",
       "kind": "asr",
       "displayName": "Whisper large-v3-turbo (Balanced)",
       "qualityTiers": ["balanced", "high"],
-      "required": true,
+      "required": false,
+      "recommended": true,
       "license": "MIT",
       "gated": false,
       "sizeBytes": 1600000000,
@@ -51,6 +70,7 @@
       "displayName": "Whisper large-v3 (Maximum)",
       "qualityTiers": ["max"],
       "required": false,
+      "recommended": false,
       "license": "MIT",
       "gated": false,
       "sizeBytes": 3100000000,
@@ -65,6 +85,7 @@
       "displayName": "Speaker segmentation (pyannote 3 ONNX)",
       "qualityTiers": ["fast", "balanced", "high", "max"],
       "required": false,
+      "recommended": true,
       "license": "MIT",
       "gated": false,
       "sizeBytes": 6000000,
@@ -81,6 +102,7 @@
       "displayName": "Speaker embedding (TitaNet-small ONNX)",
       "qualityTiers": ["fast", "balanced", "high", "max"],
       "required": false,
+      "recommended": true,
       "license": "CC-BY-4.0",
       "gated": false,
       "sizeBytes": 90000000,

@@ -14,6 +14,25 @@ INFERENCE_ENV = {
 def apply_inference_offline() -> None:
     for key, value in INFERENCE_ENV.items():
         os.environ[key] = value
+    try:
+        from huggingface_hub import constants
+
+        constants.HF_HUB_OFFLINE = True
+    except Exception:
+        pass
+
+
+def allow_hub_download() -> None:
+    """Downloads must hit Hugging Face / GitHub. Inference stays offline otherwise."""
+    os.environ["HF_HUB_OFFLINE"] = "0"
+    os.environ["TRANSFORMERS_OFFLINE"] = "0"
+    os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+    try:
+        from huggingface_hub import constants
+
+        constants.HF_HUB_OFFLINE = False
+    except Exception:
+        pass
 
 
 def assert_local_media(path: str) -> Path:

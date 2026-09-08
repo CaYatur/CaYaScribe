@@ -1,4 +1,11 @@
 from cayascribe.asr.router import parakeet_allowed, resolve_asr_language, select_engine
+from cayascribe.assets.manifest import QUALITY_ASR
+
+
+def test_quality_maps_to_exact_whisper_repo():
+    assert QUALITY_ASR["fast"][0] == "whisper-small-ct2"
+    assert QUALITY_ASR["balanced"][0] == "whisper-turbo-ct2"
+    assert QUALITY_ASR["max"][0] == "whisper-large-v3-ct2"
 
 
 def test_unsupported_language_falls_back_to_english():

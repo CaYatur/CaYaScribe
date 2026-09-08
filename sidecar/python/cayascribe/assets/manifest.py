@@ -7,6 +7,13 @@ from typing import Any
 
 from cayascribe.paths import assets_dir, bundled_manifest
 
+QUALITY_ASR = {
+    "fast": ("whisper-small-ct2", "small"),
+    "balanced": ("whisper-turbo-ct2", "large-v3-turbo"),
+    "high": ("whisper-turbo-ct2", "large-v3-turbo"),
+    "max": ("whisper-large-v3-ct2", "large-v3"),
+}
+
 
 @dataclass
 class AssetRecord:
@@ -15,6 +22,7 @@ class AssetRecord:
     displayName: str
     qualityTiers: list[str]
     required: bool
+    recommended: bool
     license: str
     gated: bool
     sizeBytes: int
@@ -36,6 +44,16 @@ class AssetRecord:
             return any(p.rglob("*"))
         return False
 
+    def source_label(self) -> str:
+        if self.hfRepo:
+            return f"Hugging Face · {self.hfRepo}"
+        if self.urls:
+            u = self.urls[0]
+            if "github.com" in u:
+                return "GitHub Releases"
+            return u
+        return ""
+
 
 def load_manifest() -> list[AssetRecord]:
     path = bundled_manifest()
@@ -49,6 +67,7 @@ def load_manifest() -> list[AssetRecord]:
                 displayName=raw["displayName"],
                 qualityTiers=list(raw.get("qualityTiers") or []),
                 required=bool(raw.get("required")),
+                recommended=bool(raw.get("recommended")),
                 license=raw["license"],
                 gated=bool(raw.get("gated")),
                 sizeBytes=int(raw.get("sizeBytes") or 0),
@@ -75,11 +94,14 @@ def asset_status(records: list[AssetRecord] | None = None) -> list[dict[str, Any
                 "displayName": a.displayName,
                 "qualityTiers": a.qualityTiers,
                 "required": a.required,
+                "recommended": a.recommended,
                 "license": a.license,
                 "gated": a.gated,
                 "sizeBytes": a.sizeBytes,
                 "present": present,
                 "path": str(a.local_path()),
+                "source": a.source_label(),
+                "hfRepo": a.hfRepo,
             }
         )
     return rows
@@ -101,24 +123,16 @@ def ffmpeg_exe() -> Path | None:
     return p if p.is_file() else None
 
 
+def quality_ready(quality: str) -> bool:
+    if ffmpeg_exe() is None:
+        return False
+    asset_id, _ = QUALITY_ASR.get(quality, QUALITY_ASR["balanced"])
+    return by_id(asset_id).present()
+
+
 def whisper_dir_for_quality(quality: str) -> tuple[str, Path | None]:
-    mapping = {
-        "fast": ("whisper-small-ct2", "small"),
-        "balanced": ("whisper-turbo-ct2", "large-v3-turbo"),
-        "high": ("whisper-turbo-ct2", "large-v3-turbo"),
-        "max": ("whisper-large-v3-ct2", "large-v3"),
-    }
-    asset_id, name = mapping.get(quality, mapping["balanced"])
+    asset_id, name = QUALITY_ASR.get(quality, QUALITY_ASR["balanced"])
     rec = by_id(asset_id)
     if rec.present():
         return name, rec.local_path()
-    # fallbacks
-    for fallback_id, fallback_name in (
-        ("whisper-turbo-ct2", "large-v3-turbo"),
-        ("whisper-small-ct2", "small"),
-        ("whisper-large-v3-ct2", "large-v3"),
-    ):
-        r = by_id(fallback_id)
-        if r.present():
-            return fallback_name, r.local_path()
     return name, None

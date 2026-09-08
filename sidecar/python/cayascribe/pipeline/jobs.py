@@ -6,6 +6,7 @@ import uuid
 from typing import Any
 
 from cayascribe.asr.whisper_fw import transcribe
+from cayascribe.assets.manifest import quality_ready
 from cayascribe.diar.cluster import assign_speakers, diarize
 from cayascribe.models import JobCreate
 from cayascribe.offline import assert_local_media
@@ -26,6 +27,8 @@ class JobRunner:
             return self._current is not None
 
     def start(self, req: JobCreate) -> str:
+        if not quality_ready(req.quality):
+            raise RuntimeError("models_missing_for_quality")
         with self._lock:
             if self._current:
                 raise RuntimeError("job_running")
@@ -55,6 +58,8 @@ class JobRunner:
         work = jobs_dir() / job_id
         work.mkdir(parents=True, exist_ok=True)
         try:
+            if not quality_ready(req.quality):
+                raise RuntimeError("models_missing_for_quality")
             media = assert_local_media(req.mediaPath)
             self._emit(job_id, "progress", {"stage": "extract", "pct": 5})
             wav = extract_wav(media, work / "original_16k.wav", 16000)

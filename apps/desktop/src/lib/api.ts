@@ -39,9 +39,14 @@ export const api = {
     }),
   cancelDownload: () => req("/v1/assets/cancel", { method: "POST" }),
   assetProgress: () =>
-    req<{ active: boolean; assetId: string | null; bytes: number; total: number; error: string | null }>(
-      "/v1/assets/progress",
-    ),
+    req<{
+      active: boolean;
+      assetId: string | null;
+      bytes: number;
+      total: number;
+      error: string | null;
+      source: string | null;
+    }>("/v1/assets/progress"),
   createJob: (body: JobBody) =>
     req<{ jobId: string }>("/v1/jobs", { method: "POST", body: JSON.stringify(body) }),
   cancelJob: (id: string) => req(`/v1/jobs/${id}/cancel`, { method: "POST" }),
@@ -55,10 +60,13 @@ export type AssetRow = {
   displayName: string;
   qualityTiers: string[];
   required: boolean;
+  recommended: boolean;
   license: string;
   sizeBytes: number;
   present: boolean;
   path: string;
+  source: string;
+  hfRepo?: string | null;
 };
 
 export type JobBody = {
