@@ -34,7 +34,7 @@
     "windows": {
       "nsis": {
         "displayLanguageSelector": true,
-        "installerLanguages": ["English", "Turkish"]
+        "languages": ["English", "Turkish"]
       }
     }
   }
