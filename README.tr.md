@@ -40,7 +40,7 @@ npm install
 npm run tauri dev
 ```
 
-İlk çalıştırmada FFmpeg, Whisper turbo (günlük), Qwen3-ASR 0.6B/1.7B (Türkçe ve gürültülü ses) ve konuşmacı modelleri önerilir. İstemediğini işaretten çıkar.
+İlk çalıştırmada FFmpeg, Qwen3-ASR 0.6B/1.7B (Türkçe ve gürültülü ses), pyannote bölümleme ve WeSpeaker ResNet293-LM (konuşmacı izi) önerilir. İstemediğini işaretten çıkar.
 
 ## Kalite profilleri
 

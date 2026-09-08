@@ -42,7 +42,7 @@ npm install
 npm run tauri dev
 ```
 
-On first run the app offers FFmpeg, Whisper turbo (everyday), Qwen3-ASR 0.6B/1.7B (Turkish and noisy audio), and speaker models. Uncheck what you do not need.
+On first run the app offers FFmpeg, Qwen3-ASR 0.6B/1.7B (Turkish and noisy audio), pyannote segmentation, and WeSpeaker ResNet293-LM (speaker ID). Uncheck what you do not need.
 
 ## Quality profiles
 
