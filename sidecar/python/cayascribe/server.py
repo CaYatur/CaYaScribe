@@ -21,7 +21,7 @@ from cayascribe.pipeline.jobs import RUNNER
 
 apply_inference_offline()
 
-app = FastAPI(title="CaYaScribe sidecar", version="0.1.2")
+app = FastAPI(title="CaYaScribe sidecar", version="0.1.3")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -46,7 +46,7 @@ def _on_asset(event: str, data: dict[str, Any]) -> None:
 
 @app.get("/v1/health")
 def health() -> dict[str, Any]:
-    return {"ok": True, "name": "cayascribe", "version": "0.1.2"}
+    return {"ok": True, "name": "cayascribe", "version": "0.1.3"}
 
 
 @app.get("/v1/devices", dependencies=[Depends(require_bearer)])

@@ -70,3 +70,90 @@ export function exportJson(
 ): string {
   return JSON.stringify({ version: 1, speakers, segments, ...extra }, null, 2);
 }
+
+export async function exportDocx(
+  segments: Segment[],
+  speakers: Speaker[],
+  opts: ExportOptions,
+  title = "Transcript",
+): Promise<Uint8Array> {
+  const { Document, HeadingLevel, Packer, Paragraph, TextRun } = await import("docx");
+  const children: InstanceType<typeof Paragraph>[] = [
+    new Paragraph({
+      heading: HeadingLevel.HEADING_1,
+      spacing: { after: 280 },
+      children: [
+        new TextRun({
+          text: title,
+          bold: true,
+          font: "Arial",
+          size: 32,
+          color: "111826",
+        }),
+      ],
+    }),
+  ];
+  for (const s of segments) {
+    const runs: InstanceType<typeof TextRun>[] = [];
+    if (opts.timestamps) {
+      runs.push(
+        new TextRun({
+          text: `${formatClock(s.startMs, "txt")} – ${formatClock(s.endMs, "txt")}  `,
+          font: "Arial",
+          size: 18,
+          color: "64748B",
+        }),
+      );
+    }
+    if (opts.speakers) {
+      runs.push(
+        new TextRun({
+          text: `${nameOf(speakers, s.speakerId)}: `,
+          bold: true,
+          font: "Arial",
+          size: 22,
+          color: "DC2626",
+        }),
+      );
+    }
+    runs.push(
+      new TextRun({
+        text: s.text,
+        font: "Arial",
+        size: 22,
+        color: "111826",
+      }),
+    );
+    children.push(
+      new Paragraph({
+        spacing: { after: 200, line: 276 },
+        children: runs,
+      }),
+    );
+  }
+  if (segments.length === 0) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: " ", font: "Arial", size: 22 })],
+      }),
+    );
+  }
+  const doc = new Document({
+    styles: {
+      default: { document: { run: { font: "Arial", size: 22 } } },
+    },
+    sections: [
+      {
+        properties: {
+          page: {
+            size: { width: 11906, height: 16838 },
+            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
+          },
+        },
+        children,
+      },
+    ],
+  });
+  const blob = await Packer.toBlob(doc);
+  return new Uint8Array(await blob.arrayBuffer());
+}

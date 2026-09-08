@@ -14,8 +14,8 @@ Default docs language is English. Turkish: [README.tr.md](../README.tr.md).
 3. Tag and push:
 
 ```powershell
-git tag v0.1.2
-git push origin v0.1.2
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
 The [release workflow](../.github/workflows/release.yml) runs on `v*` tags:

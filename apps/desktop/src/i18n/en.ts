@@ -18,7 +18,7 @@ export const en = {
   rename: "Rename speaker",
   renameHint: "Every segment with this speaker is updated.",
   export: "Export",
-  exportHint: "Pick a format, then choose where to save the file.",
+  exportHint: "Pick a format (TXT, SRT, VTT, JSON, or Word), then choose where to save the file.",
   timestamps: "Timestamps",
   labels: "Speaker labels",
   emptyTitle: "Ready",

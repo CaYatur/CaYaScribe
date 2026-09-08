@@ -20,7 +20,7 @@ export const tr: Messages = {
   rename: "Konuşmacıyı adlandır",
   renameHint: "Bu konuşmacıdaki tüm satırlar güncellenir.",
   export: "Dışa aktar",
-  exportHint: "Biçimi seçin, ardından dosyanın kaydedileceği yeri seçin.",
+  exportHint: "Biçimi seçin (TXT, SRT, VTT, JSON veya Word), ardından kaydedilecek yeri seçin.",
   timestamps: "Zaman damgası",
   labels: "Konuşmacı etiketleri",
   emptyTitle: "Hazır",

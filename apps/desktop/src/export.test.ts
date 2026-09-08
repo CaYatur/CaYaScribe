@@ -1,5 +1,5 @@
 import { localeFromNavigator } from "./i18n";
-import { exportSrt, exportTxt, type Segment, type Speaker } from "./lib/export";
+import { exportDocx, exportSrt, exportTxt, type Segment, type Speaker } from "./lib/export";
 
 if (localeFromNavigator("tr") !== "tr") throw new Error("tr locale");
 if (localeFromNavigator("tr-TR") !== "tr") throw new Error("tr-TR locale");
@@ -25,6 +25,11 @@ if (!txt.includes("[00:00.0 – 00:01.5] Ali: merhaba")) {
 const srt = exportSrt(segs, speakers, { timestamps: true, speakers: true });
 if (!srt.includes("01:01:01,000 --> 01:01:02,000")) {
   throw new Error("srt hour field");
+}
+
+const docx = await exportDocx(segs, speakers, { timestamps: true, speakers: true }, "kayit");
+if (docx[0] !== 0x50 || docx[1] !== 0x4b) {
+  throw new Error("docx is not a zip");
 }
 
 console.log("export tests ok");

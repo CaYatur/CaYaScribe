@@ -3,7 +3,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { api, setSidecar, sidecar, type AssetRow, type JobBody } from "./lib/api";
 import { streamEvents } from "./lib/sse";
-import { exportJson, exportSrt, exportTxt, exportVtt, type Segment, type Speaker } from "./lib/export";
+import { exportDocx, exportJson, exportSrt, exportTxt, exportVtt, type Segment, type Speaker } from "./lib/export";
 import { formatBytes, formatClock } from "./lib/format";
 import {
   assetHint,
@@ -363,23 +363,29 @@ export default function App() {
     return stem || "transcript";
   }
 
-  async function exportAs(kind: "txt" | "srt" | "vtt" | "json") {
-    const text =
-      kind === "txt"
-        ? exportTxt(segments, speakers, opts)
-        : kind === "srt"
-          ? exportSrt(segments, speakers, opts)
-          : kind === "vtt"
-            ? exportVtt(segments, speakers, opts)
-            : exportJson(segments, speakers);
-    const name = `${transcriptStem()}.${kind}`;
+  async function exportAs(kind: "txt" | "srt" | "vtt" | "json" | "docx") {
+    const stem = transcriptStem();
+    const name = `${stem}.${kind}`;
     try {
       const path = await save({
         defaultPath: name,
-        filters: [{ name: kind.toUpperCase(), extensions: [kind] }],
+        filters: [{ name: kind === "docx" ? "Word" : kind.toUpperCase(), extensions: [kind] }],
       });
       if (!path) return;
-      await invoke("save_text_file", { path, contents: text });
+      if (kind === "docx") {
+        const bytes = await exportDocx(segments, speakers, opts, stem);
+        await invoke("save_bytes_file", { path, contents: Array.from(bytes) });
+      } else {
+        const text =
+          kind === "txt"
+            ? exportTxt(segments, speakers, opts)
+            : kind === "srt"
+              ? exportSrt(segments, speakers, opts)
+              : kind === "vtt"
+                ? exportVtt(segments, speakers, opts)
+                : exportJson(segments, speakers);
+        await invoke("save_text_file", { path, contents: text });
+      }
       setExportOpen(false);
       setErr(null);
     } catch (e) {
@@ -685,7 +691,7 @@ export default function App() {
       </div>
 
       <footer className="status">
-        <span>v0.1.2 · MIT · {t.footerModels}</span>
+        <span>v0.1.3 · MIT · {t.footerModels}</span>
         <span>{formatBytes(diskTotal)} {t.onDisk} · {assets.filter((a) => a.present).length}/{assets.length} {t.footerAssets}</span>
       </footer>
 
@@ -721,6 +727,7 @@ export default function App() {
               <button className="btn" onClick={() => void exportAs("srt")}>SRT</button>
               <button className="btn" onClick={() => void exportAs("vtt")}>VTT</button>
               <button className="btn" onClick={() => void exportAs("json")}>JSON</button>
+              <button className="btn" onClick={() => void exportAs("docx")}>Word</button>
             </div>
           </div>
         </div>

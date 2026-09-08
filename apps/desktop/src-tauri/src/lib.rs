@@ -15,9 +15,8 @@ fn sidecar_info(state: tauri::State<SidecarInfo>) -> SidecarInfo {
     state.inner().clone()
 }
 
-#[tauri::command]
-fn save_text_file(path: String, contents: String) -> Result<(), String> {
-    let p = std::path::PathBuf::from(&path);
+fn write_file(path: &str, bytes: &[u8]) -> Result<(), String> {
+    let p = std::path::PathBuf::from(path);
     if path.trim().is_empty() {
         return Err("empty_path".into());
     }
@@ -26,7 +25,17 @@ fn save_text_file(path: String, contents: String) -> Result<(), String> {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
     }
-    std::fs::write(&p, contents.as_bytes()).map_err(|e| e.to_string())
+    std::fs::write(&p, bytes).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_text_file(path: String, contents: String) -> Result<(), String> {
+    write_file(&path, contents.as_bytes())
+}
+
+#[tauri::command]
+fn save_bytes_file(path: String, contents: Vec<u8>) -> Result<(), String> {
+    write_file(&path, &contents)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -59,7 +68,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![sidecar_info, save_text_file])
+        .invoke_handler(tauri::generate_handler![sidecar_info, save_text_file, save_bytes_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
