@@ -218,7 +218,12 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <img className="brand-logo" src="/logo.svg" alt="CaYaScribe" />
+          <svg className="brand-logo" viewBox="0 0 188 28" aria-label="CaYaScribe" role="img">
+            <text x="0" y="22" fontFamily="Inter, Segoe UI, sans-serif" fontSize="22" fontWeight="700" letterSpacing="-0.045em">
+              <tspan fill="#dc2626">CaYa</tspan>
+              <tspan fill="#f8fafc">Scribe</tspan>
+            </text>
+          </svg>
           <span>{t.subtitle}</span>
         </div>
         <div className="top-actions">

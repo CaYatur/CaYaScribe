@@ -73,7 +73,14 @@ button { cursor: pointer; }
   opacity: 0.4;
 }
 .brand { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.brand-logo { height: 26px; width: auto; max-width: 220px; display: block; object-fit: contain; object-position: left center; }
+.brand-logo {
+  height: 34px;
+  width: 228px;
+  display: block;
+  overflow: visible;
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+}
 .brand span { color: var(--muted); font-size: 12px; }
 .top-actions { display: flex; gap: 8px; align-items: center; }
 .lang {
