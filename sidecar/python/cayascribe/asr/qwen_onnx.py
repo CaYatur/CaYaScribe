@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -68,8 +69,11 @@ def transcribe_qwen(
     language: str,
     engine_name: str,
     turns: list[dict[str, Any]] | None = None,
+    cancel: threading.Event | None = None,
 ) -> Iterator[dict[str, Any]]:
     _ = turns
+    if cancel is not None and cancel.is_set():
+        return
     import numpy as np
     import sherpa_onnx
     import soundfile as sf
@@ -103,6 +107,8 @@ def transcribe_qwen(
     windows = _chunks(audio.shape[0], int(sr))
     idx = 0
     for wi, (start, end) in enumerate(windows):
+        if cancel is not None and cancel.is_set():
+            return
         yield {
             "type": "progress",
             "stage": "asr",

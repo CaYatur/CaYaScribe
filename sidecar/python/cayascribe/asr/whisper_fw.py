@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -79,8 +80,10 @@ def open_whisper_model(model_dir: Path | str) -> tuple[Any, str, str]:
         return model, "cpu", "int8"
 
 
-def detect_language(wav: Path) -> str | None:
+def detect_language(wav: Path, cancel: threading.Event | None = None) -> str | None:
     """Whisper LID on the first ~30s. Qwen-ONNX auto-LID is unreliable for Turkish."""
+    if cancel is not None and cancel.is_set():
+        return None
     model_dir = None
     for quality in ("fast", "balanced", "max"):
         _name, found = whisper_dir_for_quality(quality)
@@ -122,7 +125,10 @@ def transcribe(
     quality: str,
     language: str,
     model_dir: Path | None = None,
+    cancel: threading.Event | None = None,
 ) -> Iterator[dict[str, Any]]:
+    if cancel is not None and cancel.is_set():
+        return
     if model_dir is None:
         _name, model_dir = whisper_dir_for_quality(quality)
     if model_dir is None:
@@ -146,6 +152,8 @@ def transcribe(
         "compute": compute,
     }
     for i, seg in enumerate(segments):
+        if cancel is not None and cancel.is_set():
+            return
         text = (seg.text or "").strip()
         if not text:
             continue

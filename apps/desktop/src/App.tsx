@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { api, setSidecar, sidecar, type AssetRow, type JobBody } from "./lib/api";
@@ -59,6 +59,7 @@ export default function App() {
   const [err, setErr] = useState<string | null>(null);
   const [showModels, setShowModels] = useState(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
+  const jobAbort = useRef<AbortController | null>(null);
 
   function changeLocale(next: Locale) {
     setLocale(next);
@@ -195,29 +196,57 @@ export default function App() {
       speakerCount: n && Number.isFinite(n) ? n : null,
       enhance,
     };
+    jobAbort.current?.abort();
+    const ac = new AbortController();
+    jobAbort.current = ac;
     try {
       const { jobId: id } = await api.createJob(body);
       setJobId(id);
       setSegments([]);
       setSpeakers([]);
       setJob({ stage: "starting", pct: 1 });
-      await streamEvents(api.jobUrl(id), sidecar().token, (event, data) => {
-        const d = data as Record<string, unknown>;
-        if (event === "progress") {
-          setJob({ stage: String(d.stage ?? ""), pct: Number(d.pct ?? 0) });
-        }
-        if (event === "done") {
-          setSegments((d.segments as Segment[]) || []);
-          setSpeakers((d.speakers as Speaker[]) || []);
-          setJob({ stage: "done", pct: 100 });
-        }
-        if (event === "error") {
-          setJob({ stage: "error", pct: 0, error: String(d.error ?? "error") });
-          setErr(String(d.error ?? "error"));
-        }
-      });
+      await streamEvents(
+        api.jobUrl(id),
+        sidecar().token,
+        (event, data) => {
+          const d = data as Record<string, unknown>;
+          if (event === "progress") {
+            setJob({ stage: String(d.stage ?? ""), pct: Number(d.pct ?? 0) });
+          }
+          if (event === "done") {
+            setSegments((d.segments as Segment[]) || []);
+            setSpeakers((d.speakers as Speaker[]) || []);
+            setJob({ stage: "done", pct: 100 });
+          }
+          if (event === "cancelled") {
+            setJob(null);
+            setJobId(null);
+          }
+          if (event === "error") {
+            setJob({ stage: "error", pct: 0, error: String(d.error ?? "error") });
+            setErr(String(d.error ?? "error"));
+          }
+        },
+        ac.signal,
+      );
     } catch (e) {
+      const name = e instanceof Error ? e.name : "";
+      if (name === "AbortError") return;
       setErr(String(e));
+    }
+  }
+
+  async function cancelRunningJob() {
+    const id = jobId;
+    jobAbort.current?.abort();
+    jobAbort.current = null;
+    setJob(null);
+    setJobId(null);
+    if (!id) return;
+    try {
+      await api.cancelJob(id);
+    } catch {
+      /* already gone */
     }
   }
 
@@ -368,7 +397,7 @@ export default function App() {
                 <button className="btn" onClick={() => setShowModels(true)}>{t.settings}</button>
               )}
               {jobId && jobBusy && (
-                <button className="btn" onClick={() => jobId && api.cancelJob(jobId)}>{t.cancel}</button>
+                <button className="btn" onClick={() => void cancelRunningJob()}>{t.cancel}</button>
               )}
             </div>
             {job && (

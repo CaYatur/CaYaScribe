@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -23,10 +24,15 @@ def transcribe(
     quality: str,
     language: str,
     turns: list[dict[str, Any]] | None = None,
+    cancel: threading.Event | None = None,
 ) -> Iterator[dict[str, Any]]:
+    if cancel is not None and cancel.is_set():
+        return
     lang = language
     if resolve_asr_language(language) is None:
-        detected = detect_language(wav)
+        detected = detect_language(wav, cancel=cancel)
+        if cancel is not None and cancel.is_set():
+            return
         if detected:
             lang = detected
     engine = select_engine(
@@ -39,23 +45,27 @@ def transcribe(
     if engine == "whisper-large-v3-tr":
         model_dir = ct2_model_dir(by_id("whisper-large-v3-tr").local_path())
         if model_dir is not None:
-            yield from transcribe_whisper(wav, quality, lang or "tr", model_dir=model_dir)
+            yield from transcribe_whisper(
+                wav, quality, lang or "tr", model_dir=model_dir, cancel=cancel
+            )
             return
     if engine.startswith("qwen"):
         asset_id = "qwen3-asr-1.7b" if engine == "qwen-1.7b" else "qwen3-asr-0.6b"
         model_dir = qwen_model_dir(by_id(asset_id).local_path())
         if model_dir is not None:
-            gen = transcribe_qwen(wav, model_dir, lang, engine, turns)
+            gen = transcribe_qwen(wav, model_dir, lang, engine, turns, cancel=cancel)
             prelude: list[dict[str, Any]] = []
             first_seg: dict[str, Any] | None = None
             for item in gen:
+                if cancel is not None and cancel.is_set():
+                    return
                 if item.get("type") == "segment":
                     first_seg = item
                     break
                 prelude.append(item)
             code = resolve_asr_language(lang) or ""
             if first_seg and code == "tr" and cjk_ratio(str(first_seg.get("text") or "")) > 0.12:
-                yield from transcribe_whisper(wav, quality, lang)
+                yield from transcribe_whisper(wav, quality, lang, cancel=cancel)
                 return
             for item in prelude:
                 if item.get("type") == "meta" and lang and lang not in ("auto", ""):
@@ -63,6 +73,9 @@ def transcribe(
                 yield item
             if first_seg:
                 yield first_seg
-            yield from gen
+            for item in gen:
+                if cancel is not None and cancel.is_set():
+                    return
+                yield item
             return
-    yield from transcribe_whisper(wav, quality, lang)
+    yield from transcribe_whisper(wav, quality, lang, cancel=cancel)

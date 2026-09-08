@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import threading
 import uuid
 from typing import Any
@@ -21,6 +22,7 @@ class JobRunner:
         self._events: dict[str, list[tuple[str, dict[str, Any]]]] = {}
         self._cancel: dict[str, threading.Event] = {}
         self._results: dict[str, dict[str, Any]] = {}
+        self._ffmpeg: dict[str, subprocess.Popen] = {}
 
     def busy(self) -> bool:
         with self._lock:
@@ -44,6 +46,18 @@ class JobRunner:
         ev = self._cancel.get(job_id)
         if ev:
             ev.set()
+        proc = self._ffmpeg.pop(job_id, None)
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.kill()
+            except OSError:
+                pass
+        with self._lock:
+            if self._current == job_id:
+                self._current = None
+        events = self._events.get(job_id) or []
+        if not any(name == "cancelled" for name, _ in events):
+            self._emit(job_id, "cancelled", {"ok": True})
 
     def events(self, job_id: str) -> list[tuple[str, dict[str, Any]]]:
         return list(self._events.get(job_id, []))
@@ -62,7 +76,14 @@ class JobRunner:
                 raise RuntimeError("models_missing_for_quality")
             media = assert_local_media(req.mediaPath)
             self._emit(job_id, "progress", {"stage": "extract", "pct": 5})
-            wav = extract_wav(media, work / "original_16k.wav", 16000)
+            wav = extract_wav(
+                media,
+                work / "original_16k.wav",
+                16000,
+                cancel=self._cancel[job_id],
+                on_proc=lambda p: self._ffmpeg.__setitem__(job_id, p),
+            )
+            self._ffmpeg.pop(job_id, None)
             if self._cancel[job_id].is_set():
                 raise RuntimeError("cancelled")
 
@@ -72,19 +93,30 @@ class JobRunner:
             diar_name = "none"
             if do_diar:
                 self._emit(job_id, "progress", {"stage": "diarize", "pct": 20})
+                if self._cancel[job_id].is_set():
+                    raise RuntimeError("cancelled")
                 try:
                     turns = diarize(wav, speaker_count)
                     diar_name = "sherpa-onnx" if turns else "skipped"
                 except Exception:
-                    # ASR still useful if sherpa-onnx result shape changes again
+                    if self._cancel[job_id].is_set():
+                        raise RuntimeError("cancelled")
                     turns = []
                     diar_name = "skipped"
 
+            if self._cancel[job_id].is_set():
+                raise RuntimeError("cancelled")
             self._emit(job_id, "progress", {"stage": "asr", "pct": 35})
             segments: list[dict[str, Any]] = []
             engine = "whisper"
             language = req.language
-            for item in transcribe(wav, req.quality, req.language, turns=turns):
+            for item in transcribe(
+                wav,
+                req.quality,
+                req.language,
+                turns=turns,
+                cancel=self._cancel[job_id],
+            ):
                 if self._cancel[job_id].is_set():
                     raise RuntimeError("cancelled")
                 if item["type"] == "meta":
@@ -138,9 +170,20 @@ class JobRunner:
             self._results[job_id] = result
             self._emit(job_id, "done", result)
         except Exception as exc:
-            self._emit(job_id, "error", {"error": str(exc)})
+            cancelled = self._cancel.get(job_id) is not None and self._cancel[job_id].is_set()
+            if cancelled or str(exc) == "cancelled":
+                events = self._events.get(job_id) or []
+                if not any(name == "cancelled" for name, _ in events):
+                    self._emit(job_id, "cancelled", {"ok": True})
+            else:
+                self._emit(job_id, "error", {"error": str(exc)})
         finally:
-            # wipe work wavs
+            proc = self._ffmpeg.pop(job_id, None)
+            if proc is not None and proc.poll() is None:
+                try:
+                    proc.kill()
+                except OSError:
+                    pass
             for p in work.glob("*.wav"):
                 try:
                     p.unlink()

@@ -175,7 +175,7 @@ async def job_events(job_id: str):
                 ev, data = events[idx]
                 idx += 1
                 yield f"event: {ev}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-                if ev in ("done", "error"):
+                if ev in ("done", "error", "cancelled"):
                     return
             await asyncio.sleep(0.2)
 
