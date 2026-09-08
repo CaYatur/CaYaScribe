@@ -239,7 +239,32 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
 }
 .src { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
 .model-list { list-style: none; padding: 0; margin: 0 0 12px; max-height: 46vh; overflow: auto; }
-.model-row { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.model-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.model-row .check { flex: 1; min-width: 0; align-items: flex-start; }
+.model-row .btn { flex: 0 0 auto; padding: 6px 10px; font-size: 12px; }
+.btn.danger {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.45);
+  color: var(--primary-light);
+}
+.btn.danger:hover { border-color: var(--primary); background: rgba(220, 38, 38, 0.2); }
+.btn.danger:disabled { opacity: 0.5; cursor: not-allowed; }
+.remove-confirm {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.08);
+}
+.remove-confirm p { margin: 0 0 8px; font-size: 13px; color: var(--text); }
+.remove-confirm .hint { margin: 0 0 10px; }
 .modal-wide { width: min(640px, 94vw); }
 .hint {
   font-size: 11px;

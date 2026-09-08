@@ -60,7 +60,11 @@ def devices() -> dict[str, Any]:
 def assets() -> dict[str, Any]:
     rows = asset_status()
     missing = [r for r in rows if not r["present"]]
-    return {"assets": rows, "missingRequired": [r for r in missing if r["required"]]}
+    return {
+        "assets": rows,
+        "missingRequired": [r for r in missing if r["required"]],
+        "diskTotal": sum(int(r.get("diskBytes") or 0) for r in rows),
+    }
 
 
 @app.post("/v1/assets/download", dependencies=[Depends(require_bearer)])
@@ -80,6 +84,34 @@ def download(body: dict[str, Any]) -> dict[str, Any]:
 def cancel_download() -> dict[str, str]:
     DOWNLOADS.cancel()
     return {"ok": "cancelled"}
+
+
+@app.post("/v1/assets/remove", dependencies=[Depends(require_bearer)])
+def remove_assets(body: dict[str, Any]) -> dict[str, Any]:
+    if RUNNER.busy():
+        raise HTTPException(409, "job_running")
+    if DOWNLOADS.progress.get("active"):
+        raise HTTPException(409, "download_busy")
+    ids = body.get("ids") or []
+    if not ids:
+        raise HTTPException(400, "no_ids")
+    removed: list[str] = []
+    for asset_id in ids:
+        try:
+            rec = by_id(asset_id)
+        except KeyError as exc:
+            raise HTTPException(404, f"unknown_asset:{asset_id}") from exc
+        try:
+            rec.remove()
+        except OSError as exc:
+            raise HTTPException(409, f"remove_failed:{asset_id}:{exc}") from exc
+        removed.append(asset_id)
+    rows = asset_status()
+    return {
+        "removed": removed,
+        "assets": rows,
+        "diskTotal": sum(int(r.get("diskBytes") or 0) for r in rows),
+    }
 
 
 @app.get("/v1/assets/progress", dependencies=[Depends(require_bearer)])

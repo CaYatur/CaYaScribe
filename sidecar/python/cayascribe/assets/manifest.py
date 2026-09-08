@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,24 @@ QUALITY_ASR = {
 MIN_CT2_BYTES = 50 * 1024 * 1024
 _CT2_NAMES = ("model.bin", "model.safetensors")
 _SKIP_DIRS = {".cache", ".git", "__pycache__"}
+
+
+def _dir_size(path: Path) -> int:
+    if path.is_file():
+        try:
+            return path.stat().st_size
+        except OSError:
+            return 0
+    if not path.is_dir():
+        return 0
+    total = 0
+    for f in path.rglob("*"):
+        if f.is_file():
+            try:
+                total += f.stat().st_size
+            except OSError:
+                pass
+    return total
 
 
 def _is_ct2_weight(path: Path, min_bytes: int) -> bool:
@@ -64,6 +83,34 @@ class AssetRecord:
 
     def local_path(self) -> Path:
         return assets_dir() / self.relativePath
+
+    def install_root(self) -> Path:
+        if self.archiveRoot:
+            return assets_dir() / self.archiveRoot
+        p = self.local_path()
+        if self.extract == "ffmpeg":
+            return p.parent
+        return p
+
+    def disk_bytes(self) -> int:
+        return _dir_size(self.install_root())
+
+    def remove(self) -> None:
+        root = assets_dir().resolve()
+        target = self.install_root().resolve()
+        try:
+            target.relative_to(root)
+        except ValueError as exc:
+            raise RuntimeError("remove_outside_assets") from exc
+        if target == root:
+            raise RuntimeError("refuse_delete_assets_root")
+        if not target.exists():
+            return
+        if target.is_file() or target.is_symlink():
+            target.unlink(missing_ok=True)
+            return
+        if target.is_dir():
+            shutil.rmtree(target)
 
     def present(self) -> bool:
         p = self.local_path()
@@ -129,6 +176,7 @@ def asset_status(records: list[AssetRecord] | None = None) -> list[dict[str, Any
                 "license": a.license,
                 "gated": a.gated,
                 "sizeBytes": a.sizeBytes,
+                "diskBytes": a.disk_bytes(),
                 "present": present,
                 "path": str(a.local_path()),
                 "source": a.source_label(),

@@ -58,6 +58,7 @@ export default function App() {
   const [dl, setDl] = useState<{ assetId?: string; bytes: number; total: number; source?: string } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [showModels, setShowModels] = useState(false);
+  const [removeId, setRemoveId] = useState<string | null>(null);
 
   function changeLocale(next: Locale) {
     setLocale(next);
@@ -129,6 +130,25 @@ export default function App() {
     } catch {
       /* browser fallback below */
     }
+  }
+
+  async function confirmRemove() {
+    if (!removeId || dl) return;
+    if (job !== null && job.stage !== "done" && job.stage !== "error") return;
+    setErr(null);
+    try {
+      await api.removeAssets([removeId]);
+      setRemoveId(null);
+      await refreshAssets();
+    } catch (e) {
+      setErr(String(e));
+    }
+  }
+
+  function diskLabel(a: AssetRow): string {
+    if (a.present) return `${t.downloaded} · ${formatBytes(a.diskBytes || 0)} ${t.onDisk}`;
+    if ((a.diskBytes || 0) > 0) return `${t.incomplete} · ${formatBytes(a.diskBytes)} ${t.onDisk}`;
+    return formatBytes(a.sizeBytes);
   }
 
   async function startDownload() {
@@ -246,6 +266,8 @@ export default function App() {
   const downloading = Boolean(dl);
   const hasQueuedDownloads = assets.some((a) => !a.present && !!picked[a.id]);
   const canStartDownload = hasQueuedDownloads && !downloading;
+  const diskTotal = assets.reduce((n, a) => n + (a.diskBytes || 0), 0);
+  const removeTarget = assets.find((a) => a.id === removeId);
 
   return (
     <div className="app">
@@ -470,7 +492,7 @@ export default function App() {
 
       <footer className="status">
         <span>v0.1.0 · MIT · {t.footerModels}</span>
-        <span>{assets.filter((a) => a.present).length}/{assets.length} {t.footerAssets}</span>
+        <span>{formatBytes(diskTotal)} {t.onDisk} · {assets.filter((a) => a.present).length}/{assets.length} {t.footerAssets}</span>
       </footer>
 
       {renameId && (
@@ -533,10 +555,19 @@ export default function App() {
                         <small className="model-hint">{assetHint(locale, a.id)}</small>
                       )}
                       <small className="src">
-                        {t.source}: {a.source} · {a.present ? t.downloaded : formatBytes(a.sizeBytes)}
+                        {t.source}: {a.source} · {diskLabel(a)}
                       </small>
                     </span>
                   </label>
+                  {(a.present || (a.diskBytes || 0) > 0) && (
+                    <button
+                      className="btn danger"
+                      disabled={downloading || jobBusy}
+                      onClick={() => setRemoveId(a.id)}
+                    >
+                      {t.remove}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -545,6 +576,20 @@ export default function App() {
                 {dl.assetId} {dl.source ? `· ${dl.source}` : ""} — {formatBytes(dl.bytes)} / {formatBytes(dl.total || 1)}
                 <div className="bar">
                   <span style={{ width: `${Math.min(100, (dl.bytes / (dl.total || 1)) * 100)}%` }} />
+                </div>
+              </div>
+            )}
+            {removeId && removeTarget && (
+              <div className="remove-confirm">
+                <p>{t.removeConfirm}</p>
+                <p className="hint">
+                  {assetLabel(locale, removeTarget.id, removeTarget.displayName)} · {formatBytes(removeTarget.diskBytes || 0)} {t.onDisk}
+                </p>
+                <div className="row">
+                  <button className="btn" onClick={() => setRemoveId(null)}>{t.dismiss}</button>
+                  <button className="btn danger" disabled={downloading || jobBusy} onClick={() => void confirmRemove()}>
+                    {t.remove}
+                  </button>
                 </div>
               </div>
             )}

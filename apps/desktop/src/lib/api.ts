@@ -30,7 +30,7 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   health: () => fetch(url("/v1/health")).then((r) => r.json()),
-  assets: () => req<{ assets: AssetRow[]; missingRequired: AssetRow[] }>("/v1/assets"),
+  assets: () => req<{ assets: AssetRow[]; missingRequired: AssetRow[]; diskTotal: number }>("/v1/assets"),
   devices: () => req<{ cuda: boolean; vramMb: number; ffmpegLgpl: boolean }>("/v1/devices"),
   download: (ids: string[]) =>
     req<{ started: string; queued: string[] }>("/v1/assets/download", {
@@ -38,6 +38,11 @@ export const api = {
       body: JSON.stringify({ ids }),
     }),
   cancelDownload: () => req("/v1/assets/cancel", { method: "POST" }),
+  removeAssets: (ids: string[]) =>
+    req<{ removed: string[]; assets: AssetRow[]; diskTotal: number }>("/v1/assets/remove", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    }),
   assetProgress: () =>
     req<{
       active: boolean;
@@ -63,6 +68,7 @@ export type AssetRow = {
   recommended: boolean;
   license: string;
   sizeBytes: number;
+  diskBytes: number;
   present: boolean;
   path: string;
   source: string;
