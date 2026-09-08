@@ -1,0 +1,10 @@
+# Base sidecar: no torch. Pins are loose in v0.1; tighten in release.
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.9
+faster-whisper>=1.1.0
+huggingface-hub>=0.26
+onnxruntime>=1.20
+sherpa-onnx>=1.10
+numpy>=2.0
+soundfile>=0.12

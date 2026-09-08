@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CaYaScribe project",
+  "type": "object",
+  "required": ["version", "media", "speakers", "segments"],
+  "properties": {
+    "version": { "type": "integer" },
+    "media": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "size": { "type": "integer" },
+        "durationMs": { "type": "integer" }
+      }
+    },
+    "speakers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" }
+        }
+      }
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "speakerId", "startMs", "endMs", "text"]
+      }
+    }
+  }
+}

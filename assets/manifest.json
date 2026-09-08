@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "id": "ffmpeg-btbn-lgpl-8.1",
+      "kind": "ffmpeg",
+      "displayName": "FFmpeg (BtbN LGPL, decode)",
+      "qualityTiers": ["fast", "balanced", "high", "max"],
+      "required": true,
+      "license": "LGPL-2.1+",
+      "gated": false,
+      "sizeBytes": 168900000,
+      "sha256": null,
+      "extract": "ffmpeg",
+      "relativePath": "ffmpeg/ffmpeg.exe",
+      "urls": [
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-win64-lgpl-8.1.zip"
+      ]
+    },
+    {
+      "id": "whisper-small-ct2",
+      "kind": "asr",
+      "displayName": "Whisper small (Hızlı)",
+      "qualityTiers": ["fast"],
+      "required": false,
+      "license": "MIT",
+      "gated": false,
+      "sizeBytes": 500000000,
+      "sha256": null,
+      "hfRepo": "Systran/faster-whisper-small",
+      "relativePath": "asr/whisper-small-ct2",
+      "urls": []
+    },
+    {
+      "id": "whisper-turbo-ct2",
+      "kind": "asr",
+      "displayName": "Whisper large-v3-turbo (Dengeli)",
+      "qualityTiers": ["balanced", "high"],
+      "required": true,
+      "license": "MIT",
+      "gated": false,
+      "sizeBytes": 1600000000,
+      "sha256": null,
+      "hfRepo": "deepdml/faster-whisper-large-v3-turbo-ct2",
+      "relativePath": "asr/whisper-turbo-ct2",
+      "urls": []
+    },
+    {
+      "id": "whisper-large-v3-ct2",
+      "kind": "asr",
+      "displayName": "Whisper large-v3 (Maksimum)",
+      "qualityTiers": ["max"],
+      "required": false,
+      "license": "MIT",
+      "gated": false,
+      "sizeBytes": 3100000000,
+      "sha256": null,
+      "hfRepo": "Systran/faster-whisper-large-v3",
+      "relativePath": "asr/whisper-large-v3-ct2",
+      "urls": []
+    },
+    {
+      "id": "pyannote-seg-3",
+      "kind": "diarization",
+      "displayName": "Konuşmacı bölümleme (pyannote 3 ONNX)",
+      "qualityTiers": ["fast", "balanced", "high", "max"],
+      "required": false,
+      "license": "MIT",
+      "gated": false,
+      "sizeBytes": 6000000,
+      "sha256": null,
+      "relativePath": "diar/segmentation/model.onnx",
+      "archiveRoot": "diar/segmentation",
+      "urls": [
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2"
+      ]
+    },
+    {
+      "id": "titanet-small",
+      "kind": "diarization",
+      "displayName": "Konuşmacı gömme (TitaNet-small ONNX)",
+      "qualityTiers": ["fast", "balanced", "high", "max"],
+      "required": false,
+      "license": "CC-BY-4.0",
+      "gated": false,
+      "sizeBytes": 90000000,
+      "sha256": null,
+      "relativePath": "diar/nemo_en_titanet_small.onnx",
+      "urls": [
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/nemo_en_titanet_small.onnx"
+      ]
+    }
+  ]
+}

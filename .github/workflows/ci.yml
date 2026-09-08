@@ -1,0 +1,39 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  sidecar:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install sidecar (no ML wheels in CI path for ruff/pytest unit)
+        working-directory: sidecar/python
+        run: |
+          python -m pip install -U pip
+          python -m pip install pydantic pytest ruff
+      - name: Ruff
+        working-directory: sidecar/python
+        run: python -m ruff check cayascribe tests
+      - name: Pytest (no network)
+        working-directory: sidecar/python
+        env:
+          PYTHONPATH: .
+        run: python -m pytest tests/test_router.py tests/test_offline.py tests/test_assign.py
+
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Typecheck
+        working-directory: apps/desktop
+        run: |
+          npm install
+          npx tsc --noEmit
