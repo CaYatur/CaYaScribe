@@ -6,6 +6,14 @@ from typing import Any
 from cayascribe.assets.manifest import by_id
 from cayascribe.paths import assets_dir
 
+# Best-available embedding first. TitaNet-small is a fallback only.
+EMBED_IDS = [
+    "wespeaker-resnet293-lm",
+    "eres2net-large",
+    "titanet-large",
+    "titanet-small",
+]
+
 
 def speaker_letter(i: int) -> str:
     if i < 26:
@@ -39,27 +47,52 @@ def iter_diar_segments(result: Any) -> list[Any]:
         return []
 
 
+def _onnx_file(path: Path) -> Path | None:
+    if path.is_file() and path.suffix.lower() == ".onnx" and path.stat().st_size > 0:
+        return path
+    if path.is_dir():
+        preferred = path / "model.onnx"
+        if preferred.is_file():
+            return preferred
+        found = sorted(path.rglob("*.onnx"))
+        if found:
+            return found[0]
+    return None
+
+
+def segmentation_path() -> Path | None:
+    try:
+        rec = by_id("pyannote-seg-3")
+    except KeyError:
+        rec = None
+    if rec is not None:
+        found = _onnx_file(rec.local_path())
+        if found is None:
+            found = _onnx_file(rec.install_root())
+        if found is not None:
+            return found
+    seg_dir = assets_dir() / "diar" / "segmentation"
+    return _onnx_file(seg_dir)
+
+
+def embedding_path() -> Path | None:
+    for asset_id in EMBED_IDS:
+        try:
+            rec = by_id(asset_id)
+        except KeyError:
+            continue
+        found = _onnx_file(rec.local_path())
+        if found is not None:
+            return found
+    return None
+
+
 def diarize(wav: Path, speaker_count: int | None) -> list[dict[str, Any]]:
     """Return turns [{startMs,endMs,speakerId}] or empty if models missing."""
-    try:
-        seg = by_id("pyannote-seg-3").local_path()
-        emb = by_id("titanet-small").local_path()
-    except KeyError:
+    seg = segmentation_path()
+    emb = embedding_path()
+    if seg is None or emb is None:
         return []
-    if not seg.is_file() or not emb.is_file():
-        # segmentation may live as model.onnx inside extracted dir
-        seg_dir = assets_dir() / "diar" / "segmentation"
-        cand = seg_dir / "model.onnx"
-        if cand.is_file():
-            seg = cand
-        else:
-            found = list(seg_dir.rglob("*.onnx")) if seg_dir.exists() else []
-            if found:
-                seg = found[0]
-            else:
-                return []
-        if not emb.is_file():
-            return []
 
     import numpy as np
     import sherpa_onnx

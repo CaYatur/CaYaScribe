@@ -1,4 +1,9 @@
-from cayascribe.diar.cluster import assign_speakers, iter_diar_segments, speaker_letter
+from cayascribe.diar.cluster import (
+    assign_speakers,
+    embedding_path,
+    iter_diar_segments,
+    speaker_letter,
+)
 
 
 class _FakeResult:
@@ -37,6 +42,30 @@ def test_iter_diar_already_list():
 
 def test_iter_diar_none():
     assert iter_diar_segments(None) == []
+
+
+def test_embedding_prefers_wespeaker(tmp_path, monkeypatch):
+    wes = tmp_path / "wespeaker.onnx"
+    wes.write_bytes(b"w" * 8)
+    tiny = tmp_path / "titanet.onnx"
+    tiny.write_bytes(b"t" * 8)
+
+    class Rec:
+        def __init__(self, p):
+            self._p = p
+
+        def local_path(self):
+            return self._p
+
+    def fake_by_id(asset_id):
+        if asset_id == "wespeaker-resnet293-lm":
+            return Rec(wes)
+        if asset_id == "titanet-small":
+            return Rec(tiny)
+        raise KeyError(asset_id)
+
+    monkeypatch.setattr("cayascribe.diar.cluster.by_id", fake_by_id)
+    assert embedding_path() == wes
 
 
 def test_letters():

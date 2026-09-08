@@ -55,7 +55,7 @@
       "displayName": "Whisper large-v3-turbo (Balanced)",
       "qualityTiers": ["balanced", "high"],
       "required": false,
-      "recommended": true,
+      "recommended": false,
       "license": "MIT",
       "gated": false,
       "sizeBytes": 1600000000,
@@ -129,12 +129,60 @@
       ]
     },
     {
+      "id": "wespeaker-resnet293-lm",
+      "kind": "diarization",
+      "displayName": "WeSpeaker ResNet293-LM (best speaker embedding)",
+      "qualityTiers": ["fast", "balanced", "high", "max"],
+      "required": false,
+      "recommended": true,
+      "license": "CC-BY-4.0",
+      "gated": false,
+      "sizeBytes": 114000000,
+      "sha256": null,
+      "relativePath": "diar/wespeaker_en_voxceleb_resnet293_LM.onnx",
+      "urls": [
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/wespeaker_en_voxceleb_resnet293_LM.onnx"
+      ]
+    },
+    {
+      "id": "eres2net-large",
+      "kind": "diarization",
+      "displayName": "3D-Speaker ERes2Net-large",
+      "qualityTiers": ["fast", "balanced", "high", "max"],
+      "required": false,
+      "recommended": false,
+      "license": "Apache-2.0",
+      "gated": false,
+      "sizeBytes": 111000000,
+      "sha256": null,
+      "relativePath": "diar/3dspeaker_speech_eres2net_large_sv_zh-cn_3dspeaker_16k.onnx",
+      "urls": [
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_eres2net_large_sv_zh-cn_3dspeaker_16k.onnx"
+      ]
+    },
+    {
+      "id": "titanet-large",
+      "kind": "diarization",
+      "displayName": "Speaker embedding (TitaNet-large ONNX)",
+      "qualityTiers": ["fast", "balanced", "high", "max"],
+      "required": false,
+      "recommended": false,
+      "license": "CC-BY-4.0",
+      "gated": false,
+      "sizeBytes": 97000000,
+      "sha256": null,
+      "relativePath": "diar/nemo_en_titanet_large.onnx",
+      "urls": [
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/nemo_en_titanet_large.onnx"
+      ]
+    },
+    {
       "id": "titanet-small",
       "kind": "diarization",
       "displayName": "Speaker embedding (TitaNet-small ONNX)",
       "qualityTiers": ["fast", "balanced", "high", "max"],
       "required": false,
-      "recommended": true,
+      "recommended": false,
       "license": "CC-BY-4.0",
       "gated": false,
       "sizeBytes": 90000000,
