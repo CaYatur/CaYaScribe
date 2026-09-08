@@ -680,7 +680,7 @@ export default function App() {
       </div>
 
       <footer className="status">
-        <span>v0.1.0 · MIT · {t.footerModels}</span>
+        <span>v0.1.1 · MIT · {t.footerModels}</span>
         <span>{formatBytes(diskTotal)} {t.onDisk} · {assets.filter((a) => a.present).length}/{assets.length} {t.footerAssets}</span>
       </footer>
 

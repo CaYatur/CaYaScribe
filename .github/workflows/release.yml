@@ -44,7 +44,7 @@ jobs:
 
             Yerel konuşmacı etiketli transkripsiyon. Ses bu bilgisayardan çıkmaz. Kurucuyu Assets’ten indirin; modeller onayınızdan sonra iner.
 
-            v0.1: the Python sidecar is still required for transcription until the embedded runtime ships.
+            The Python sidecar is still required for transcription until the embedded runtime ships.
           releaseDraft: false
           prerelease: false
           args: --bundles nsis
