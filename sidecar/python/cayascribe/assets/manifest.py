@@ -15,12 +15,12 @@ QUALITY_ASR = {
     "max": ("whisper-large-v3-ct2", "large-v3"),
 }
 
-# First present id wins. High/max prefer Qwen3-ASR (Turkish + noise) over Whisper.
+# First present id wins. Turkish high/max prefer the TR Whisper fine-tune.
 QUALITY_ASR_IDS = {
     "fast": ["whisper-small-ct2"],
-    "balanced": ["whisper-turbo-ct2", "qwen3-asr-0.6b"],
-    "high": ["qwen3-asr-0.6b", "whisper-turbo-ct2"],
-    "max": ["qwen3-asr-1.7b", "qwen3-asr-0.6b", "whisper-large-v3-ct2"],
+    "balanced": ["whisper-turbo-ct2", "whisper-large-v3-tr"],
+    "high": ["whisper-large-v3-tr", "whisper-turbo-ct2", "qwen3-asr-0.6b"],
+    "max": ["whisper-large-v3-tr", "whisper-large-v3-ct2", "qwen3-asr-0.6b"],
 }
 
 # CTranslate2 weights; git-LFS pointers are ~130 bytes. 50 MiB is below Whisper-small.

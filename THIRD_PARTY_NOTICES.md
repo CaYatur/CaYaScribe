@@ -22,6 +22,7 @@ Gyan “essentials” GPLv3 builds are **not** used.
 | OpenAI Whisper weights (via faster-whisper CT2) | MIT | https://github.com/openai/whisper |
 | Systran faster-whisper conversions | MIT | https://huggingface.co/Systran |
 | large-v3-turbo CT2 (`deepdml/faster-whisper-large-v3-turbo-ct2`) | MIT | Hugging Face community conversion |
+| Whisper large-v3 Turkish fine-tune (`oguzhangokboru/whisper-large-v3-tr`) | Apache-2.0 | Hugging Face CT2 export |
 | Silero VAD (bundled with faster-whisper) | MIT | https://github.com/snakers4/silero-vad |
 | sherpa-onnx pyannote segmentation 3.0 | MIT (pyannote.audio model card) | k2-fsa GitHub releases |
 | NeMo TitaNet-small / TitaNet-large speaker embedding ONNX | CC-BY-4.0 | k2-fsa GitHub releases |

@@ -24,9 +24,9 @@ type JobState = {
 
 const ASR_FOR_QUALITY: Record<JobBody["quality"], string[]> = {
   fast: ["whisper-small-ct2"],
-  balanced: ["whisper-turbo-ct2", "qwen3-asr-0.6b"],
-  high: ["qwen3-asr-0.6b", "whisper-turbo-ct2"],
-  max: ["qwen3-asr-1.7b", "qwen3-asr-0.6b", "whisper-large-v3-ct2"],
+  balanced: ["whisper-turbo-ct2", "whisper-large-v3-tr"],
+  high: ["whisper-large-v3-tr", "whisper-turbo-ct2", "qwen3-asr-0.6b"],
+  max: ["whisper-large-v3-tr", "whisper-large-v3-ct2", "qwen3-asr-0.6b"],
 };
 
 function qualityAvailable(list: AssetRow[], q: JobBody["quality"]): boolean {
@@ -549,7 +549,7 @@ export default function App() {
                     />
                     <span>
                       {a.recommended && <em className="badge">{t.recommended}</em>}
-                      {(a.id === "whisper-large-v3-ct2" || a.id === "qwen3-asr-1.7b") && (
+                      {(a.id === "whisper-large-v3-tr" || a.id === "whisper-large-v3-ct2") && (
                         <em className="badge hard">{t.hardAudio}</em>
                       )}
                       {assetLabel(locale, a.id, a.displayName)}

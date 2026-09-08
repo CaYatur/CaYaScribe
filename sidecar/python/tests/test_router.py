@@ -32,28 +32,28 @@ def test_max_tr_without_qwen_is_whisper():
     assert select_engine(language="tr", quality="max", ui_locale="tr") == "whisper-large-v3"
 
 
-def test_high_tr_prefers_qwen_onnx_without_cuda():
+def test_high_tr_prefers_whisper_tr_finetune():
     assert (
         select_engine(
             language="tr",
             quality="high",
             qwen_06=True,
-            cu12x=False,
+            whisper_tr=True,
         )
-        == "qwen-0.6b"
+        == "whisper-large-v3-tr"
     )
 
 
-def test_max_tr_uses_qwen_06_on_cpu():
+def test_tr_never_selects_qwen():
     assert (
         select_engine(
             language="tr",
             quality="max",
             qwen_06=True,
             qwen_17=True,
-            cu12x=False,
+            whisper_tr=False,
         )
-        == "qwen-0.6b"
+        == "whisper-large-v3"
     )
 
 
@@ -80,6 +80,6 @@ def test_cjk_ratio_detects_chinese():
     assert cjk_ratio("你好世界 hello") > 0.3
 
 
-def test_high_quality_ids_prefer_qwen():
-    assert QUALITY_ASR_IDS["high"][0] == "qwen3-asr-0.6b"
-    assert QUALITY_ASR_IDS["max"][0] == "qwen3-asr-1.7b"
+def test_high_quality_ids_prefer_whisper_tr():
+    assert QUALITY_ASR_IDS["high"][0] == "whisper-large-v3-tr"
+    assert QUALITY_ASR_IDS["max"][0] == "whisper-large-v3-tr"

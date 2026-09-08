@@ -121,8 +121,10 @@ def transcribe(
     wav: Path,
     quality: str,
     language: str,
+    model_dir: Path | None = None,
 ) -> Iterator[dict[str, Any]]:
-    _name, model_dir = whisper_dir_for_quality(quality)
+    if model_dir is None:
+        _name, model_dir = whisper_dir_for_quality(quality)
     if model_dir is None:
         raise RuntimeError("asr_model_missing")
     model, device, compute = open_whisper_model(model_dir)

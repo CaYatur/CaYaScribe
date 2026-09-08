@@ -97,6 +97,7 @@ def select_engine(
     ui_locale: str = "tr",
     qwen_06: bool = False,
     qwen_17: bool = False,
+    whisper_tr: bool = False,
     cu12x: bool = False,
     vram_mb: int = 0,
     parakeet: bool = False,
@@ -117,9 +118,16 @@ def select_engine(
         return forced
 
     lang_auto = (language or "auto").strip().lower() in ("auto", "", "detect")
-    # Qwen-ONNX auto-LID often emits CJK garbage. Whisper handles auto better.
-    # 1.7B INT8 on CPU is many times slower than realtime — prefer 0.6B.
-    if (not lang_auto) and quality in ("high", "max") and qwen_language_ok(lang):
+    # Independent FLEURS-TR: Whisper turbo ~6% WER, Qwen3-ASR 1.7B ~9%.
+    # Do not send Turkish to Qwen. Prefer the TR Whisper large-v3 fine-tune.
+    if lang == "tr" and quality in ("high", "max"):
+        if whisper_tr:
+            return "whisper-large-v3-tr"
+        if quality == "max":
+            return "whisper-large-v3"
+        return "whisper-turbo"
+    # Qwen-ONNX wins on some languages (zh/yue/th/vi/hi), not Turkish.
+    if (not lang_auto) and lang != "tr" and quality in ("high", "max") and qwen_language_ok(lang):
         if qwen_06:
             return "qwen-0.6b"
         if qwen_17:

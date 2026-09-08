@@ -42,7 +42,7 @@ npm install
 npm run tauri dev
 ```
 
-On first run the app offers FFmpeg, Qwen3-ASR 0.6B/1.7B (Turkish and noisy audio), pyannote segmentation, and WeSpeaker ResNet293-LM (speaker ID). Uncheck what you do not need.
+On first run the app offers FFmpeg, Whisper turbo, the Turkish Whisper large-v3 fine-tune, pyannote segmentation, and WeSpeaker ResNet293-LM. Uncheck what you do not need.
 
 ## Quality profiles
 
@@ -50,8 +50,8 @@ On first run the app offers FFmpeg, Qwen3-ASR 0.6B/1.7B (Turkish and noisy audio
 | --- | --- |
 | Fast | Whisper `small` |
 | Balanced (default) | Whisper `large-v3-turbo` |
-| High | Qwen3-ASR 0.6B (CPU ONNX) when downloaded; else turbo |
-| Maximum | Qwen3-ASR 1.7B when downloaded; else 0.6B or Whisper `large-v3` |
+| High | Turkish Whisper large-v3 fine-tune when downloaded; else turbo |
+| Maximum | Same TR fine-tune, else multilingual `large-v3` |
 
 Speaker diarization is language-independent (sherpa-onnx + TitaNet). No Hugging Face token is required for the default path.
 

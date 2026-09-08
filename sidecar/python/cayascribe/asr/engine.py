@@ -8,7 +8,7 @@ from cayascribe.asr.qwen_onnx import cjk_ratio, transcribe_qwen
 from cayascribe.asr.router import resolve_asr_language, select_engine
 from cayascribe.asr.whisper_fw import detect_language
 from cayascribe.asr.whisper_fw import transcribe as transcribe_whisper
-from cayascribe.assets.manifest import by_id, qwen_model_dir
+from cayascribe.assets.manifest import by_id, ct2_model_dir, qwen_model_dir
 
 
 def _present(asset_id: str) -> bool:
@@ -34,7 +34,13 @@ def transcribe(
         quality=quality,
         qwen_06=_present("qwen3-asr-0.6b"),
         qwen_17=_present("qwen3-asr-1.7b"),
+        whisper_tr=_present("whisper-large-v3-tr"),
     )
+    if engine == "whisper-large-v3-tr":
+        model_dir = ct2_model_dir(by_id("whisper-large-v3-tr").local_path())
+        if model_dir is not None:
+            yield from transcribe_whisper(wav, quality, lang or "tr", model_dir=model_dir)
+            return
     if engine.startswith("qwen"):
         asset_id = "qwen3-asr-1.7b" if engine == "qwen-1.7b" else "qwen3-asr-0.6b"
         model_dir = qwen_model_dir(by_id(asset_id).local_path())
