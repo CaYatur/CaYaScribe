@@ -131,10 +131,18 @@ export default function App() {
   }
 
   async function startDownload() {
-    const ids = Object.entries(picked).filter(([, v]) => v).map(([k]) => k);
+    if (dl) return;
+    const ids = assets.filter((a) => !a.present && picked[a.id]).map((a) => a.id);
     if (!ids.length) return;
     setErr(null);
-    await api.download(ids);
+    setDl({ assetId: ids[0], bytes: 0, total: 1 });
+    try {
+      await api.download(ids);
+    } catch (e) {
+      setDl(null);
+      setErr(String(e));
+      return;
+    }
     const timer = setInterval(async () => {
       const p = await api.assetProgress();
       setDl({
@@ -213,6 +221,9 @@ export default function App() {
 
   const opts = { timestamps: wantTs, speakers: wantSpk };
   const jobBusy = job !== null && job.stage !== "done" && job.stage !== "error";
+  const downloading = Boolean(dl);
+  const hasQueuedDownloads = assets.some((a) => !a.present && !!picked[a.id]);
+  const canStartDownload = hasQueuedDownloads && !downloading;
 
   return (
     <div className="app">
@@ -476,7 +487,21 @@ export default function App() {
             )}
             <div className="actions">
               <button className="btn" onClick={() => setShowModels(false)}>{t.close}</button>
-              <button className="btn primary" onClick={startDownload}>{t.download}</button>
+              <button
+                className={`btn primary${downloading ? " downloading" : ""}`}
+                disabled={!canStartDownload && !downloading}
+                aria-busy={downloading}
+                onClick={() => { if (canStartDownload) void startDownload(); }}
+              >
+                {downloading ? (
+                  <span className="downloading-label">
+                    <span className="btn-spinner" aria-hidden="true" />
+                    {t.downloading}
+                  </span>
+                ) : (
+                  t.download
+                )}
+              </button>
             </div>
           </div>
         </div>

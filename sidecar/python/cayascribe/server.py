@@ -51,15 +51,9 @@ def health() -> dict[str, Any]:
 
 @app.get("/v1/devices", dependencies=[Depends(require_bearer)])
 def devices() -> dict[str, Any]:
-    cuda = False
-    vram_mb = 0
-    try:
-        import ctranslate2
+    from cayascribe.asr.whisper_fw import cuda_usable
 
-        cuda = ctranslate2.get_cuda_device_count() > 0
-    except Exception:
-        pass
-    return {"cuda": cuda, "vramMb": vram_mb, "ffmpegLgpl": license_ok()}
+    return {"cuda": cuda_usable(), "vramMb": 0, "ffmpegLgpl": license_ok()}
 
 
 @app.get("/v1/assets", dependencies=[Depends(require_bearer)])

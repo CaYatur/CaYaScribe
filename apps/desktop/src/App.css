@@ -258,6 +258,51 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
   background: linear-gradient(135deg, var(--primary-light), var(--primary));
 }
 .btn.primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.btn.primary.downloading {
+  position: relative;
+  overflow: hidden;
+  pointer-events: none;
+  cursor: progress;
+  opacity: 1;
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+}
+.btn.primary.downloading:hover {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+.btn.primary.downloading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.22) 42%, transparent 72%);
+  transform: translateX(-120%);
+  animation: btn-shimmer 1.15s linear infinite;
+}
+.downloading-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin 0.7s linear infinite;
+}
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes btn-shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn.primary.downloading::after, .btn-spinner { animation: none; }
+}
 .btn.ghost { background: transparent; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; min-width: 0; }
 

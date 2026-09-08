@@ -3,6 +3,7 @@ export const en = {
   missingTitle: "Missing files. Download now?",
   missingBody: "Downloads start only after you confirm. No audio is uploaded.",
   download: "Download selected",
+  downloading: "Downloading…",
   later: "Later",
   file: "File (mp3, mp4, wav…)",
   browse: "Choose file",

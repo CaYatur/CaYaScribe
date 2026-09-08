@@ -5,6 +5,7 @@ export const tr: Messages = {
   missingTitle: "Eksik dosyalar var. Şimdi indir?",
   missingBody: "İndirme yalnızca siz onaylarsanız başlar. Hiçbir ses yüklenmez.",
   download: "Seçilenleri indir",
+  downloading: "İndiriliyor…",
   later: "Sonra",
   file: "Dosya (mp3, mp4, wav…)",
   browse: "Dosya seç",
