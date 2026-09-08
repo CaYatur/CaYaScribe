@@ -24,7 +24,13 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { height: 100%; margin: 0; background: var(--bg-deep); color: var(--text); }
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg-deep);
+  color: var(--text);
+  color-scheme: dark;
+}
 body {
   background-color: var(--bg);
   background-image:
@@ -71,10 +77,12 @@ button { cursor: pointer; }
 .brand span { color: var(--muted); font-size: 12px; }
 .top-actions { display: flex; gap: 8px; align-items: center; }
 .lang {
-  background: rgba(17, 24, 38, 0.64);
+  background: #111826;
+  color: var(--text);
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 6px 8px;
+  padding: 6px 28px 6px 8px;
+  color-scheme: dark;
 }
 .lang:focus { outline: none; border-color: var(--primary); }
 .sr-only {
@@ -108,16 +116,18 @@ button { cursor: pointer; }
 
 .layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
   min-height: 0;
 }
 .panel {
   border-right: 1px solid var(--line);
-  padding: 16px 18px;
-  overflow: auto;
+  padding: 16px 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--bg-2);
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 .panel-actions {
   margin-top: 16px;
@@ -139,17 +149,46 @@ button { cursor: pointer; }
   padding: 16px 20px;
   overflow: auto;
 }
-label.field { display: grid; gap: 6px; margin-bottom: 12px; font-size: 12px; color: var(--muted); }
+label.field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 0;
+}
 input[type="text"], input[type="number"], select {
-  background: rgba(17, 24, 38, 0.64);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  background: #111826;
+  color: var(--text);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 10px;
+  color-scheme: dark;
+}
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%23f8fafc' d='M1 1l5 5 5-5'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-color: #111826;
+}
+option, optgroup {
+  background-color: #111826;
+  color: #f8fafc;
+}
+option:disabled {
+  color: #64748b;
+  background-color: #0c121c;
 }
 input[type="text"]:focus, input[type="number"]:focus, select:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px var(--primary-glow);
+  box-shadow: inset 0 0 0 1px var(--primary);
 }
 .file-row { display: flex; gap: 8px; }
 .file-row input { flex: 1; }
@@ -158,7 +197,8 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
   margin-top: 6px;
   color: var(--text-2);
   font-size: 12px;
-  word-break: break-all;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .badge {
   display: inline-block;
@@ -178,14 +218,22 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
 .model-list { list-style: none; padding: 0; margin: 0 0 12px; max-height: 46vh; overflow: auto; }
 .model-row { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .modal-wide { width: min(640px, 94vw); }
-.hint { font-size: 11px; color: var(--muted); margin: 0 0 12px; line-height: 1.45; }
+.hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 0 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
 
 .btn {
   border: 1px solid var(--line);
   background: var(--bg-3);
+  color: var(--text);
   border-radius: 8px;
   padding: 8px 12px;
   font-weight: 600;
+  max-width: 100%;
   transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .btn:hover { border-color: rgba(220, 38, 38, 0.35); }
@@ -200,7 +248,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
 }
 .btn.primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 .btn.ghost { background: transparent; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; min-width: 0; }
 
 .progress {
   margin-top: 12px;
