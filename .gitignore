@@ -27,5 +27,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.log
+apps/desktop/public/logo-icon.jpg
 .env
 .env.local

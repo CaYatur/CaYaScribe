@@ -206,7 +206,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <h1>CaYaScribe</h1>
+          <img className="brand-logo" src="/logo.svg" alt="CaYaScribe" />
           <span>{t.subtitle}</span>
         </div>
         <div className="top-actions">
