@@ -31,6 +31,7 @@ export const en = {
   connected: "Local sidecar connected",
   disconnected: "Waiting for sidecar…",
   sidecarFailed: "Local engine could not start. Reinstall from GitHub Releases if this is the installed app.",
+  outOfMemory: "This file is too long for available memory. Try Fast quality or a smaller model.",
   pickFile: "Choose a file.",
   missingForQuality: "Download the model for this quality first (Models).",
   qualityLocked: "Not downloaded",

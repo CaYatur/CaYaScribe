@@ -12,6 +12,10 @@ sidecar/python/*.egg-info/
 .mypy_cache/
 
 # App data copies
+jobs/
+cayascribe.exe
+uninstall.exe
+/runtime/
 *.wav
 *.gguf
 *.onnx

@@ -248,12 +248,18 @@ def run_job_body(
         if cancel.is_set():
             raise RuntimeError("cancelled")
         emit("done", result)
+    except MemoryError:
+        emit("error", {"error": "out_of_memory"})
     except Exception as exc:
         cancelled = cancel.is_set() or str(exc) == "cancelled"
         if cancelled:
             emit("cancelled", {"ok": True})
         else:
-            emit("error", {"error": str(exc)})
+            msg = str(exc)
+            low = msg.lower()
+            if "memory" in low or "std::bad_alloc" in low:
+                msg = "out_of_memory"
+            emit("error", {"error": msg})
     finally:
         _cleanup_wavs(work)
 

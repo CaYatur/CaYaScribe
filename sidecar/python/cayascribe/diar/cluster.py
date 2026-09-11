@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Any
 
 from cayascribe.assets.manifest import by_id
+from cayascribe.audio.chunks import plan_chunks, read_slice, wav_duration
 from cayascribe.paths import assets_dir
-from cayascribe.perf import cpu_thread_count
+from cayascribe.perf import cpu_thread_count, diar_chunk_seconds, ram_gb
 
 _DIAR_CACHE: dict[tuple[str, str, int, int], Any] = {}
 
@@ -112,16 +113,12 @@ def diarize(
     if seg is None or emb is None:
         return []
 
+    import gc
+
     import numpy as np
     import sherpa_onnx
-    import soundfile as sf
 
-    samples, sr = sf.read(str(wav), dtype="float32")
-    if samples.ndim > 1:
-        samples = samples.mean(axis=1)
-    if sr != 16000:
-        raise RuntimeError("diar_expects_16k")
-
+    duration = wav_duration(wav)
     num_clusters = int(speaker_count) if speaker_count and speaker_count >= 2 else -1
     threads = cpu_thread_count()
     cache_key = (str(seg), str(emb), num_clusters, threads)
@@ -149,14 +146,9 @@ def diarize(
             return []
         sd = sherpa_onnx.OfflineSpeakerDiarization(config)
         _DIAR_CACHE[cache_key] = sd
-    audio = np.ascontiguousarray(samples, dtype=np.float32)
     expected = int(getattr(sd, "sample_rate", 16000) or 16000)
-    if sr != expected and sr > 0:
-        duration = audio.shape[0] / float(sr)
-        n = max(1, round(duration * expected))
-        t_old = np.linspace(0.0, duration, audio.shape[0], endpoint=False)
-        t_new = np.linspace(0.0, duration, n, endpoint=False)
-        audio = np.interp(t_new, t_old, audio).astype(np.float32)
+    pieces = plan_chunks(duration, diar_chunk_seconds(), path=wav)
+    overlap_s = 12.0 if len(pieces) > 1 else 0.0
 
     def _progress(processed: int, total: int) -> int:
         if cancel is not None and cancel.is_set():
@@ -165,26 +157,109 @@ def diarize(
             on_progress(int(processed), int(total))
         return 0
 
-    try:
-        result = sd.process(audio, callback=_progress)
-    except TypeError:
-        result = sd.process(audio)
+    def _turns_from_audio(audio, offset_s: float) -> list[dict[str, Any]]:
+        try:
+            result = sd.process(audio, callback=_progress)
+        except TypeError:
+            result = sd.process(audio)
+        local: list[dict[str, Any]] = []
+        order: dict[int, str] = {}
+        for item in iter_diar_segments(result):
+            sid = int(getattr(item, "speaker", 0))
+            if sid not in order:
+                order[sid] = speaker_letter(len(order))
+            local.append(
+                {
+                    "startMs": int((offset_s + float(getattr(item, "start", 0.0))) * 1000),
+                    "endMs": int((offset_s + float(getattr(item, "end", 0.0))) * 1000),
+                    "speakerId": order[sid],
+                }
+            )
+        return local
+
+    windows: list[list[dict[str, Any]]] = []
+    for i, (a, b) in enumerate(pieces):
+        if cancel is not None and cancel.is_set():
+            raise RuntimeError("cancelled")
+        start = max(0.0, a - (overlap_s if i else 0.0))
+        audio, sr = read_slice(wav, start, b)
+        if audio.size == 0:
+            windows.append([])
+            continue
+        if sr != expected and sr > 0:
+            dur = audio.shape[0] / float(sr)
+            n = max(1, round(dur * expected))
+            t_old = np.linspace(0.0, dur, audio.shape[0], endpoint=False)
+            t_new = np.linspace(0.0, dur, n, endpoint=False)
+            audio = np.interp(t_new, t_old, audio).astype(np.float32)
+        windows.append(_turns_from_audio(audio, start))
+        del audio
+        gc.collect()
+        if on_progress is not None:
+            on_progress(i + 1, len(pieces))
     if cancel is not None and cancel.is_set():
         raise RuntimeError("cancelled")
-    turns = []
-    order: dict[int, str] = {}
-    for item in iter_diar_segments(result):
-        sid = int(getattr(item, "speaker", 0))
-        if sid not in order:
-            order[sid] = speaker_letter(len(order))
-        turns.append(
-            {
-                "startMs": int(float(getattr(item, "start", 0.0)) * 1000),
-                "endMs": int(float(getattr(item, "end", 0.0)) * 1000),
-                "speakerId": order[sid],
-            }
-        )
+    turns = stitch_window_turns(windows)
+    gb = ram_gb()
+    if gb is not None and gb < 12:
+        clear_diar_cache()
+        gc.collect()
     return turns
+
+
+def clear_diar_cache() -> None:
+    _DIAR_CACHE.clear()
+
+
+def stitch_window_turns(windows: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Map per-window speaker letters onto a global A, B, C… timeline."""
+    if not windows:
+        return []
+    out: list[dict[str, Any]] = [dict(t) for t in windows[0]]
+    used = {t["speakerId"] for t in out}
+
+    def _fresh() -> str:
+        i = 0
+        while speaker_letter(i) in used:
+            i += 1
+        sid = speaker_letter(i)
+        used.add(sid)
+        return sid
+
+    def _overlap(a: dict[str, Any], b: dict[str, Any]) -> int:
+        return max(0, min(a["endMs"], b["endMs"]) - max(a["startMs"], b["startMs"]))
+
+    for window in windows[1:]:
+        if not window:
+            continue
+        win_start = min(t["startMs"] for t in window)
+        prev = [t for t in out if t["endMs"] > win_start]
+        loc_ids = []
+        for t in window:
+            if t["speakerId"] not in loc_ids:
+                loc_ids.append(t["speakerId"])
+        loc_to_glob: dict[str, str] = {}
+        for loc in loc_ids:
+            loc_turns = [t for t in window if t["speakerId"] == loc]
+            best_g = None
+            best_o = 0
+            for g in {t["speakerId"] for t in prev}:
+                g_turns = [t for t in prev if t["speakerId"] == g]
+                ov = sum(_overlap(a, b) for a in loc_turns for b in g_turns)
+                if ov > best_o:
+                    best_o = ov
+                    best_g = g
+            loc_to_glob[loc] = best_g if best_g is not None and best_o >= 400 else _fresh()
+        prev_end = max((t["endMs"] for t in out), default=0)
+        for t in window:
+            mapped = {**t, "speakerId": loc_to_glob[t["speakerId"]]}
+            if mapped["endMs"] <= prev_end:
+                continue
+            mapped["startMs"] = max(mapped["startMs"], prev_end)
+            if mapped["endMs"] > mapped["startMs"]:
+                out.append(mapped)
+    out.sort(key=lambda t: (t["startMs"], t["endMs"]))
+    return out
 
 
 def assign_speakers(segments: list[dict[str, Any]], turns: list[dict[str, Any]]) -> list[dict[str, Any]]:

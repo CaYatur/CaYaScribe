@@ -33,6 +33,7 @@ export const tr: Messages = {
   connected: "Yerel sidecar bağlı",
   disconnected: "Sidecar bekleniyor…",
   sidecarFailed: "Yerel motor başlayamadı. Kurulu uygulamaysa GitHub Releases’ten yeniden kur.",
+  outOfMemory: "Bu dosya mevcut bellek için çok uzun. Hızlı kaliteyi veya daha küçük bir modeli dene.",
   pickFile: "Bir dosya seçin.",
   missingForQuality: "Bu kalite için modeli önce Modeller’den indirin.",
   qualityLocked: "İndirilmedi",

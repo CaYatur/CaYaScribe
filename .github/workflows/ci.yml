@@ -23,7 +23,7 @@ jobs:
         working-directory: sidecar/python
         env:
           PYTHONPATH: .
-        run: python -m pytest tests/test_router.py tests/test_offline.py tests/test_assign.py
+        run: python -m pytest tests/test_router.py tests/test_offline.py tests/test_assign.py tests/test_chunks.py
 
   desktop:
     runs-on: windows-latest

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from cayascribe.asr.router import QWEN_LANG_NAMES, resolve_asr_language
+from cayascribe.audio.chunks import read_slice, wav_duration, wav_sample_rate
 from cayascribe.perf import cpu_thread_count
 
 _REC_CACHE: dict[tuple[str, str, int], Any] = {}
@@ -78,7 +79,6 @@ def transcribe_qwen(
         return
     import numpy as np
     import sherpa_onnx
-    import soundfile as sf
 
     conv, enc, dec, tok = _files(model_dir)
     threads = cpu_thread_count()
@@ -123,10 +123,9 @@ def transcribe_qwen(
             continue
     if rec is None:
         raise last_exc or RuntimeError("qwen_recognizer_failed")
-    samples, sr = sf.read(str(wav), dtype="float32")
-    if samples.ndim > 1:
-        samples = samples.mean(axis=1)
-    audio = np.ascontiguousarray(samples, dtype=np.float32)
+    duration = wav_duration(wav)
+    sr = wav_sample_rate(wav)
+    n = max(1, int(duration * sr))
     lang_opt = _language_option(language)
     yield {
         "type": "meta",
@@ -135,7 +134,7 @@ def transcribe_qwen(
         "device": used_provider,
         "compute": "int8",
     }
-    windows = _chunks(audio.shape[0], int(sr))
+    windows = _chunks(n, int(sr))
     idx = 0
     for wi, (start, end) in enumerate(windows):
         if cancel is not None and cancel.is_set():
@@ -148,7 +147,7 @@ def transcribe_qwen(
             "stageTotal": len(windows),
             "pct": 35 + int(50 * wi / max(len(windows), 1)),
         }
-        piece = audio[start:end]
+        piece, _sr = read_slice(wav, start / float(sr), end / float(sr))
         if piece.size < sr * 0.35:
             continue
         if float(np.max(np.abs(piece))) < 0.008:
@@ -173,3 +172,4 @@ def transcribe_qwen(
             "words": [],
         }
         idx += 1
+        del piece

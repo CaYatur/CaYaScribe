@@ -317,8 +317,10 @@ export default function App() {
             setJobId(null);
           }
           if (event === "error") {
-            setJob({ stage: "error", pct: 0, error: String(d.error ?? "error") });
-            setErr(String(d.error ?? "error"));
+            const raw = String(d.error ?? "error");
+            const mapped = raw === "out_of_memory" ? t.outOfMemory : raw;
+            setJob({ stage: "error", pct: 0, error: mapped });
+            setErr(mapped);
           }
         },
         ac.signal,
@@ -691,7 +693,7 @@ export default function App() {
       </div>
 
       <footer className="status">
-        <span>v0.1.3 · MIT · {t.footerModels}</span>
+        <span>v0.1.4 · MIT · {t.footerModels}</span>
         <span>{formatBytes(diskTotal)} {t.onDisk} · {assets.filter((a) => a.present).length}/{assets.length} {t.footerAssets}</span>
       </footer>
 

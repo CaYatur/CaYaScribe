@@ -1,6 +1,6 @@
 [package]
 name = "cayascribe"
-version = "0.1.3"
+version = "0.1.4"
 description = "Local speaker-aware transcription"
 authors = ["CaYaScribe maintainers"]
 edition = "2021"

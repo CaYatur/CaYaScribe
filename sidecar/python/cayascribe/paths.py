@@ -46,10 +46,11 @@ def bundled_manifest() -> Path:
             return p
     here = Path(__file__).resolve()
     exe_dir = Path(sys.executable).resolve().parent
-    candidates: list[Path] = [exe_dir / "assets" / "manifest.json"]
+    candidates: list[Path] = []
     for idx in (3, 1):
         if len(here.parents) > idx:
             candidates.append(here.parents[idx] / "assets" / "manifest.json")
+    candidates.append(exe_dir / "assets" / "manifest.json")
     for path in candidates:
         if path.is_file():
             return path

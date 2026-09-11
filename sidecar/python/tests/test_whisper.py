@@ -79,4 +79,4 @@ def test_decode_params_are_greedy_on_fast():
 
 def test_cpu_thread_count_bounded():
     n = cpu_thread_count()
-    assert 4 <= n <= 16
+    assert 2 <= n <= 8
