@@ -6,6 +6,8 @@ Local, offline speaker-aware transcription for Windows. Audio and video **never 
 
 The **app UI** is English or Turkish. The OS/browser language is used on first launch; anything other than Turkish falls back to **English**. You can switch in the title bar. Transcription itself covers 99+ languages (Whisper); an unknown language code is treated as English.
 
+<img src="CaYaScribe.png" alt="CaYaScribe" width="600"/>
+
 ## What it does
 
 - Extracts audio from MP3, MP4 and other media (LGPL FFmpeg)
